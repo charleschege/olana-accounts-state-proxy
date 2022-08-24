@@ -52,25 +52,7 @@ async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
             let body = String::from_utf8_lossy(&body).to_string();
             let body = body.trim();
 
-            let jd = &mut serde_json::Deserializer::from_str(body);
-
-            let result: Result<RpcRequest, _> = serde_path_to_error::deserialize(jd);
-            match result {
-                Ok(rpc_request) => {
-                    if rpc_request.parameter_checks(&mut response)? {
-                        rpc_request.respond(&mut response)?;
-                    } else {
-                    }
-                }
-                Err(error) => {
-                    let path = error.to_string();
-
-                    JsonError::new()
-                        .add_message("Unable to parse the JSON request")
-                        .add_data(&path)
-                        .response(&mut response)?;
-                }
-            }
+            parse_body(body, &mut response)?;
         }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
@@ -78,4 +60,31 @@ async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
     };
 
     Ok(response)
+}
+
+/// Parses bodies of all `POST` requests
+pub fn parse_body(body: &str, response: &mut Response<Body>) -> RpcProxyResult<RpcRequest> {
+    let jd = &mut serde_json::Deserializer::from_str(body);
+
+    let deser_body: Result<RpcRequest, _> = serde_path_to_error::deserialize(jd);
+    match deser_body {
+        Ok(rpc_request) => {
+            if rpc_request.parameter_checks(response)? {
+                rpc_request.respond(response)?;
+            } else {
+            }
+
+            Ok(rpc_request)
+        }
+        Err(error) => {
+            let path = error.to_string();
+
+            JsonError::new()
+                .add_message("Unable to parse the JSON request")
+                .add_data(&path)
+                .response(response)?;
+
+            Err(RpcProxyError::SerdeJsonError(path))
+        }
+    }
 }

@@ -12,8 +12,8 @@ pub enum RpcProxyError {
     /// An `std::io::Error` was encountered. It wraps  `std::io::ErrorKind`.
     Io(ErrorKind),
     /// Errors occurring from serializing or deserializing the JSON data from the
-    /// HTTP body. This operation is handled by `serde_json` crate and wraps a `serde_json::Error`
-    SerdeError(serde_json::Error),
+    /// HTTP body. This operation is handled by `serde_json` crate
+    SerdeJsonError(String),
 }
 
 impl fmt::Display for RpcProxyError {
@@ -38,6 +38,6 @@ impl From<hyper::Error> for RpcProxyError {
 
 impl From<serde_json::Error> for RpcProxyError {
     fn from(error: serde_json::Error) -> Self {
-        RpcProxyError::SerdeError(error)
+        RpcProxyError::SerdeJsonError(error.to_string())
     }
 }
