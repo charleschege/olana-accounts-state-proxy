@@ -3,11 +3,6 @@ use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Check if a JSON Rpc Request Method is supported.
-pub fn is_supported(method: &str) -> bool {
-    matches!(method, "getAccountInfo")
-}
-
 /// A deserialized JSON request from a client
 #[derive(Debug, Deserialize)]
 pub struct RpcRequest {
@@ -19,6 +14,52 @@ pub struct RpcRequest {
     pub method: String,
     /// The parameters to process
     pub params: (String, HashMap<String, String>),
+}
+
+impl RpcRequest {
+    pub(crate) fn respond(&self, responder: &mut Response<Body>) -> RpcProxyResult<()> {
+        let rpc_response = RpcResponse::<String>::new("Processing Valid data".to_owned());
+        let ser_rpc_response = serde_json::to_string(&rpc_response)?;
+
+        *responder.body_mut() = Body::from(ser_rpc_response);
+        *responder.status_mut() = StatusCode::OK;
+
+        Ok(())
+    }
+
+    /// Checks if the Rpc `Method` and `Encoding` are supported by the proxy server
+    pub(crate) fn parameter_checks(&self, responder: &mut Response<Body>) -> RpcProxyResult<bool> {
+        if !self.is_supported() {
+            let mut error_data = String::new();
+            error_data.push_str("Method `");
+            error_data.push_str(&self.method);
+            error_data.push_str("` Is Not Supported. Open a feature request issue on Github if you need this method to be supported");
+
+            JsonError::new()
+                .add_message("Method Not Supported")
+                .add_data(&error_data)
+                .response(responder)?;
+
+            return Ok(false);
+        }
+
+        if let Some(encoding_data) = self.params.1.get("encoding") {
+            let encoding: Encoding = encoding_data.as_str().into();
+
+            if encoding.is_supported(responder)? {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(true) // Defaults to `Base64`
+        }
+    }
+
+    /// Check if a JSON Rpc Request Method is supported.
+    fn is_supported(&self) -> bool {
+        matches!(self.method.as_str(), "getAccountInfo")
+    }
 }
 
 /// An RPC response ready to be serialized into JSON format
@@ -129,5 +170,58 @@ impl JsonError {
 impl Default for JsonError {
     fn default() -> Self {
         JsonError::new()
+    }
+}
+
+/// The supported Solana RPC encoding formats
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Encoding {
+    /// The encoding of the response data is Base64 encoding format.
+    Base64,
+    /// The encoding of the response data is Base58 encoding format.
+    /// `NOTE: Base58 is slower than Base64, always prefer Base64.`
+    Base58,
+    /// The encoding of the response data should use
+    /// internal parsers to return JSON encoded response data.
+    JsonParsed,
+    /// The encoding of the  response data is Base64 encoding format compressed
+    /// using `zstd` compression algorithm.
+    Base64Zstd,
+    /// The encoding provided is not supported by the proxy server. Try Base64 encoding
+    UnsupportedEncoding(String),
+}
+
+impl Encoding {
+    /// Check if the encoding from the RPC request is supported by the proxy server
+    pub fn is_supported(&self, responder: &mut Response<Body>) -> RpcProxyResult<bool> {
+        match self {
+            Self::UnsupportedEncoding(encoding_value) => {
+                let mut error_data = String::new();
+                error_data.push_str("Encoding format `");
+                error_data.push_str(encoding_value);
+                error_data.push_str("` is not supported. ");
+                error_data.push_str("Encoding formats available are, `Base64`, `Base64+zstd`, `Base58` and `JsonParsed`");
+
+                JsonError::new()
+                    .add_message("Unsupported Encoding Format")
+                    .add_data(&error_data)
+                    .response(responder)?;
+
+                Ok(false)
+            }
+            _ => Ok(true),
+        }
+    }
+}
+
+impl From<&str> for Encoding {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "base64" => Encoding::Base64,
+            "base58" => Encoding::Base58,
+            "jsonparsed" => Encoding::JsonParsed,
+            "base64+zstd" => Encoding::Base64Zstd,
+            _ => Encoding::UnsupportedEncoding(value.to_owned()),
+        }
     }
 }

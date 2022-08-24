@@ -56,19 +56,10 @@ async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
 
             let result: Result<RpcRequest, _> = serde_path_to_error::deserialize(jd);
             match result {
-                Ok(json_data) => {
-                    if !is_supported(&json_data.method) {
-                        let mut error_data = String::new();
-                        error_data.push_str("Method `");
-                        error_data.push_str(&json_data.method);
-                        error_data.push_str("` Is Not Supported. Open a feature request issue on Github if you need this method to be supported");
-
-                        JsonError::new()
-                            .add_message("Method Not Supported")
-                            .add_data(&error_data)
-                            .response(&mut response)?
+                Ok(rpc_request) => {
+                    if rpc_request.parameter_checks(&mut response)? {
+                        rpc_request.respond(&mut response)?;
                     } else {
-                        *response.body_mut() = Body::from("Processing....");
                     }
                 }
                 Err(error) => {
