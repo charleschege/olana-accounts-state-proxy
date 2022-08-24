@@ -57,20 +57,27 @@ async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
             let result: Result<RpcRequest, _> = serde_path_to_error::deserialize(jd);
             match result {
                 Ok(json_data) => {
-                    *response.body_mut() = Body::from("Processing....");
+                    if !is_supported(&json_data.method) {
+                        let mut error_data = String::new();
+                        error_data.push_str("Method `");
+                        error_data.push_str(&json_data.method);
+                        error_data.push_str("` Is Not Supported. Open a feature request issue on Github if you need this method to be supported");
+
+                        JsonError::new()
+                            .add_message("Method Not Supported")
+                            .add_data(&error_data)
+                            .response(&mut response)?
+                    } else {
+                        *response.body_mut() = Body::from("Processing....");
+                    }
                 }
                 Err(error) => {
                     let path = error.to_string();
 
-                    let mut json_error = JsonError::new();
-                    json_error.data = Some(path);
-                    json_error.message = "Unable to parse the JSON request".to_owned();
-
-                    let rpc_response = RpcResponse::<JsonError>::new(json_error);
-                    let ser_rpc_response = serde_json::to_string(&rpc_response)?;
-
-                    *response.body_mut() = Body::from(ser_rpc_response);
-                    *response.status_mut() = StatusCode::BAD_REQUEST;
+                    JsonError::new()
+                        .add_message("Unable to parse the JSON request")
+                        .add_data(&path)
+                        .response(&mut response)?;
                 }
             }
         }

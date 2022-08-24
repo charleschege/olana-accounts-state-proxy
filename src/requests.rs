@@ -1,5 +1,12 @@
+use crate::RpcProxyResult;
+use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Check if a JSON Rpc Request Method is supported.
+pub fn is_supported(method: &str) -> bool {
+    matches!(method, "getAccountInfo")
+}
 
 /// A deserialized JSON request from a client
 #[derive(Debug, Deserialize)]
@@ -83,6 +90,39 @@ impl JsonError {
             message: String::default(),
             data: Option::None,
         }
+    }
+
+    /// Add a  JSON error code
+    pub fn add_code(mut self, code: i16) -> Self {
+        self.code = code;
+
+        self
+    }
+
+    /// Add a  JSON error message
+    pub fn add_message(mut self, message: &str) -> Self {
+        self.message = message.to_owned();
+
+        self
+    }
+
+    /// Add  JSON error data
+    pub fn add_data(mut self, data: &str) -> Self {
+        self.data = Some(data.to_owned());
+
+        self
+    }
+
+    /// Add the error data to the `hyper::Response` body
+    pub fn response(self, responder: &mut Response<Body>) -> RpcProxyResult<()> {
+        let rpc_response = RpcResponse::<JsonError>::new(self);
+
+        let ser_rpc_response = serde_json::to_string(&rpc_response)?;
+
+        *responder.body_mut() = Body::from(ser_rpc_response);
+        *responder.status_mut() = StatusCode::BAD_REQUEST;
+
+        Ok(())
     }
 }
 
