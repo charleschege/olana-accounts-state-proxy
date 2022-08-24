@@ -437,7 +437,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-accounts-state-proxy"
+name = "solana-accounts-proxy"
 version = "0.1.0"
 dependencies = [
  "futures",

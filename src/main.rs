@@ -1,3 +1,7 @@
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
+
 use hyper::{
     service::{make_service_fn, service_fn},
     Method, StatusCode,
@@ -34,8 +38,6 @@ async fn shutdown_signal() {
 }
 
 async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
-    println!("URI: {:?}", req.uri());
-
     let mut response = Response::new(Body::empty());
 
     match (req.method(), req.uri().path()) {
@@ -58,9 +60,7 @@ async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
                     *response.body_mut() = Body::from("Processing....");
                 }
                 Err(error) => {
-                    dbg!(&error);
                     let path = error.to_string();
-                    dbg!(&path);
 
                     let mut json_error = JsonError::new();
                     json_error.data = Some(path);
@@ -78,8 +78,6 @@ async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
             *response.status_mut() = StatusCode::NOT_FOUND;
         }
     };
-
-    dbg!(&response);
 
     Ok(response)
 }

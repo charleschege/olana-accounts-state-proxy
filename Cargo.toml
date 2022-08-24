@@ -1,5 +1,5 @@
 [package]
-name = "solana-accounts-state-proxy"
+name = "solana-accounts-proxy"
 authors = ["Charles Chege <charleschege@protonmail.ch>"]
 version = "0.1.0"
 edition = "2021"
