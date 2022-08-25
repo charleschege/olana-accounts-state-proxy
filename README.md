@@ -43,3 +43,7 @@ The binary will listen on default network socket `https://0.0.0.0:1024`.
 - `200`: The HTTP Status Code `200` will show that the POST request was processed successfully and that the JSON body was parsed successfully, the request was then made to the data store and a response was generated successfully as JSON encoding of the [RpcResponse] struct.
 
 - `400`: The HTTP Status Code `400` will show that the POST request was processed successfully but the JSON data is invalid. A JSON encoded String of `RpcResponse<JsonError>` from structs [RpcResponse] and [JsonError] is returned to the user.
+
+The JSON body returned by the proxy server is in the same format as that from a Solana RPC node therefore can be parsed using any Solana RPC client.
+
+Errors encountered while parsing the JSON data, checking for supported RPC methods or supported encoding formats are returned to the client with respect to the JSON 2 errors specification - [https://www.jsonrpc.org/specification#error_object](https://www.jsonrpc.org/specification#error_object) . Solana RPC clients use the same specification enabling compatibility.
