@@ -24,20 +24,7 @@ impl Config {
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 
-        let mut config: Config = toml::from_str(&contents)?;
-
-        let mut private_path = String::new();
-        private_path.push_str(path);
-        private_path.push('/');
-        private_path.push_str(&config.tls.private);
-
-        let mut public_path = String::new();
-        public_path.push_str(path);
-        public_path.push('/');
-        public_path.push_str(&config.tls.public);
-
-        config.tls.public = public_path;
-        config.tls.private = private_path;
+        let config: Config = toml::from_str(&contents)?;
 
         Ok(config)
     }
