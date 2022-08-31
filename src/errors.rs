@@ -16,15 +16,12 @@ pub enum RpcProxyError {
     SerdeJsonError(String),
     /// The Socket Address provided could not be parsed
     AddrParseError,
-    /// An error encountered when handling HTTPS certificates using `rustls` crate
-    Rustls(rustls::Error),
     /// A Custom Error
     Custom(String),
     /// The path to locate the config file was not provided as an argument when running the binary
     MissingPathToConfigFile,
-    /// An error occured when trying to read the configuration from
-    /// the TOML format
-    Toml(String),
+    /// Error when parsing to an integer value
+    Int(String),
 }
 
 impl fmt::Display for RpcProxyError {
@@ -59,14 +56,8 @@ impl From<serde_json::Error> for RpcProxyError {
     }
 }
 
-impl From<rustls::Error> for RpcProxyError {
-    fn from(error: rustls::Error) -> Self {
-        RpcProxyError::Rustls(error)
-    }
-}
-
-impl From<toml::de::Error> for RpcProxyError {
-    fn from(error: toml::de::Error) -> Self {
-        RpcProxyError::Toml(error.to_string())
+impl From<core::num::ParseIntError> for RpcProxyError {
+    fn from(error: core::num::ParseIntError) -> Self {
+        RpcProxyError::Int(error.to_string())
     }
 }
