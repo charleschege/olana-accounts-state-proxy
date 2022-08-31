@@ -2,35 +2,24 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-use hyper::{
-    service::{make_service_fn, service_fn},
-    Server,
-};
+use hyper::Server;
 use jsonrpsee::{
-    core::rpc_params,
+    core::Error as JsonRpcServerError,
     http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle, RpcModule},
 };
-use socket2::{Domain, Socket, Type};
-use std::{
-    env,
-    net::{SocketAddr, TcpListener},
-};
+use std::{collections::HashMap, env, net::SocketAddr};
+
+#[cfg(feature = "log_with_tracing")]
 use tracing_subscriber::{filter::LevelFilter, util::SubscriberInitExt};
 
 mod requests;
 pub use requests::*;
 
-mod errors;
-pub use errors::*;
-
 mod socket_parser;
 use socket_parser::get_socketaddr;
 
-mod http_parser;
-pub use http_parser::*;
-
-const ERROR_MESSAGE: &str = "Invalid Number of Command-line Arguments. 
-Expected `1`, `2` or `4` arguments. 
+const ERROR_MESSAGE: &str =
+    "Invalid Number of Command-line Arguments. Expected `1`, `2` or `4` arguments. 
 Use `-h` argument for a list of commands";
 
 const HELP_MESSAGE: [&str; 9] = [
@@ -64,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
                 std::process::exit(1);
             }
             _ => {
-                println!("{}", ERROR_MESSAGE);
+                eprintln!("{}", ERROR_MESSAGE);
 
                 std::process::exit(1);
             }
@@ -84,14 +73,10 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env()?
-        .add_directive(LevelFilter::INFO.into());
-    tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(filter)
-        .finish()
-        .try_init()?;
+    #[cfg(feature = "log_with_tracing")]
+    log()?;
 
-    dbg!(http_server(socket_addr).await?.await);
+    http_server(socket_addr).await?.await;
 
     Ok(())
 }
@@ -99,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
 async fn http_server(socket_addr: SocketAddr) -> Result<HttpServerHandle, jsonrpsee::core::Error> {
     let server = Server::bind(&socket_addr);
 
-    tracing::info!("{:?}", socket_addr);
+    println!("Listening at http://{:?}", socket_addr);
 
     let acl = AccessControlBuilder::new()
         .allow_all_headers()
@@ -108,14 +93,71 @@ async fn http_server(socket_addr: SocketAddr) -> Result<HttpServerHandle, jsonrp
         .build();
 
     let mut module = RpcModule::new(());
-    module.register_method("getAccountInfo", |_, _| {
-        tracing::info!("AccountInfo method invoked");
-        Ok("Processed RPC method")
+    module.register_method("getAccountInfo", |params, _| {
+        let parameters = params.parse::<(String, HashMap<String, String>)>()?;
+
+        let _public_key = match bs58::decode(&parameters.0).into_vec() {
+            Ok(public_key) => public_key,
+            Err(error) => {
+                let mut base58_error = String::new();
+                base58_error.push_str("Invalid Base58 Public Key. Error: `");
+                base58_error.push_str(error.to_string().as_str());
+                base58_error.push_str("`.");
+
+                #[cfg(feature = "log_with_tracing")]
+                tracing::info!("{}", &base58_error);
+
+                return Err::<String, JsonRpcServerError>(JsonRpcServerError::Custom(base58_error));
+            }
+        };
+
+        let _parse_parameters = match Parameter::parse(&parameters.1) {
+            Ok(values) => values,
+            Err(error) => {
+                #[cfg(feature = "log_with_tracing")]
+                tracing::info!("{}", &error);
+
+                return Err::<String, JsonRpcServerError>(JsonRpcServerError::Custom(error));
+            }
+        };
+
+        if let Some(encoding_value) = parameters.1.get("encoding") {
+            let encoding: Encoding = encoding_value.as_str().into();
+
+            match encoding.is_supported() {
+                Ok(_) => (),
+                Err(error) => {
+                    #[cfg(feature = "log_with_tracing")]
+                    tracing::info!("{}", &error);
+
+                    return Err::<String, JsonRpcServerError>(JsonRpcServerError::Custom(error));
+                }
+            }
+        }
+
+        let data_from_db = "DATA PROCESSED....";
+        #[cfg(feature = "log_with_tracing")]
+        tracing::info!("{}", data_from_db);
+
+        Ok(data_from_db.to_owned())
     })?;
 
     HttpServerBuilder::new()
         .set_access_control(acl) //TODO
-        .set_middleware(RpcProxyMiddleware)
         .build_from_hyper(server, socket_addr)?
         .start(module)
+}
+
+#[cfg(feature = "log_with_tracing")]
+fn log() -> anyhow::Result<()> {
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()?
+        .add_directive(LevelFilter::INFO.into());
+    tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(filter)
+        .finish()
+        .try_init()?;
+
+    tracing::info!("LOGGING WITH `tracing` crate is enabled");
+
+    Ok(())
 }

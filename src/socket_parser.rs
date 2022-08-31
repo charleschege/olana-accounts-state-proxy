@@ -1,10 +1,9 @@
-use crate::{RpcProxyError, RpcProxyResult};
 use std::{
     env::Args,
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
-pub(crate) fn get_socketaddr(cli_args: Args) -> RpcProxyResult<SocketAddr> {
+pub(crate) fn get_socketaddr(cli_args: Args) -> Result<SocketAddr, String> {
     let filtered_args = cli_args.into_iter().skip(1).collect::<Vec<String>>();
 
     let mut ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
@@ -19,28 +18,42 @@ pub(crate) fn get_socketaddr(cli_args: Args) -> RpcProxyResult<SocketAddr> {
             match value.as_str() {
                 "-ip" => {
                     if let Some(ip_value) = filtered_args.get(index + 1) {
-                        ip = ip_value.parse()?;
+                        match ip_value.parse() {
+                            Ok(value) => ip = value,
+                            Err(_) => {
+                                return Err(
+                                    "Invalid IP address provided to the command line arguments"
+                                        .to_owned(),
+                                );
+                            }
+                        };
                     } else {
-                        return Err(RpcProxyError::Custom(format!("Expected a  IP Address Argument at index `{}` for `-ip` command line argument", index + 1
+                        return Err(format!("Expected a  IP Address Argument at index `{}` for `-ip` command line argument", index + 1
                       ),
-                ));
+                );
                     }
                 }
                 "-port" => {
                     if let Some(port_value) = filtered_args.get(index + 1) {
-                        port = port_value.parse()?;
+                        match port_value.parse() {
+                            Ok(value) => port = value,
+                            Err(_) => {
+                                return Err("Invalid port provided to the command line arguments"
+                                    .to_owned());
+                            }
+                        }
                     } else {
-                        return Err(RpcProxyError::Custom(
+                        return Err(
                     format!("Expected a  port Argument at index `{}` for `-port` command line argument"
                         , index +1),
-                ));
+                );
                     }
                 }
                 _ => {
-                    return Err(RpcProxyError::Custom(format!(
+                    return Err(format!(
                         "Invalid Argument `{}`. Use `-h` to list available commands",
                         value
-                    )))
+                    ))
                 }
             }
         }
