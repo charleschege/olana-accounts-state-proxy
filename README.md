@@ -2,27 +2,31 @@
 This crate is a proxy server that handles fetching account information on a public key for Solana RPC requests. It handles `getAccountInfo`, `getMultipleAccounts` and `getProgramAccounts` RPC methods. It speeds up RPC requests by fetching information from a PostgreSQL server connected to a Solana RPC node as a `Geyser Plugin`.
 
 ##### Running the binary
-To run the proxy server, a configuration file called `ProxyConfig.toml` is required. This configuration file contains the `IP address`, `port` and `TLS keypair` to use for HTTPS connections.
+The proxy server listens at socket `http://0.0.0.0:1024` if the server is run with no extra arguments. 
 
-The path to the configuration file is passed as an argument to the server.
-```sh
-$ solana-accounts-proxy /path-to-directory-containing-config-file
-```
+###### Custom socket settings
 
-If you are compiling and running from source use:
-```sh
-$ cargo run -- /path-to-directory-containing-config-file
-```
+1. Running the server with a custom IP address
 
-##### Structure of the configuration file
-```toml
-ip = "0.0.0.0" # Ip is a String of the IP address
-port = 1024 # port is a u16 of a network port
+   ```sh
+   $ solana-accounts-proxy -ip 127.0.0.0
+   ```
 
-[tls] #The TLS configuration file
-private = "private.rsa" # path to the  RSA private key file
-public = "public.pem" # path to the public key file
-```
+   If a valid IP address is not given, the server exits with an error `server error: AddrParseError`
+
+2. Running with a custom port which is a `u16`
+
+   ```sh
+   $ solana-accounts-proxy -port 8000
+   ```
+
+   If an invalid `u16` is given for the port, the server exits with a custom error `server error: Int(...`
+
+3. Running with both a custom IP and port
+
+   ```sh
+   $ solana-accounts-proxy -ip 127.0.0.0 -port 8000
+   ```
 
 ##### Making a request to this server
 The server only accepts `POST` requests and will only process supported RPC methods `getAccountInfo`, `getMultipleAccounts` and `getProgramAccounts`.
@@ -37,7 +41,7 @@ The body must be valid JSON in the same format as JSON data sent to a Solana RPC
 ```
  where the `JsonValue` can be any Rust supported primitive type.
 
-The binary will listen on default network socket `https://0.0.0.0:1024`.
+The binary will listen on default network socket `http://0.0.0.0:1024`.
 
 ##### StatusCodes and JSON Data
 - `200`: The HTTP Status Code `200` will show that the POST request was processed successfully and that the JSON body was parsed successfully, the request was then made to the data store and a response was generated successfully as JSON encoding of the [RpcResponse] struct.
