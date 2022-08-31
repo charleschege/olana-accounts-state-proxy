@@ -79,6 +79,7 @@ allow = [
     "MIT",
     "Apache-2.0",
     "ISC",
+    "LicenseRef-TritonOne",
     #"Apache-2.0 WITH LLVM-exception",
 ]
 # List of explicitly disallowed licenses

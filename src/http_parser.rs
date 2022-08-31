@@ -6,12 +6,9 @@ pub(crate) async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Bod
 
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/") => {
-            *response.body_mut() = Body::from("Try `POST` method to `/getAccountInfo`");
+            *response.body_mut() = Body::from("Try `POST` method to `/`");
         }
         (&Method::POST, "/") => {
-            *response.body_mut() = Body::from("Try `POST` method to `/getAccountInfo`");
-        }
-        (&Method::POST, "/getAccountInfo") => {
             let body = hyper::body::to_bytes(req).await?;
             let body = String::from_utf8_lossy(&body).to_string();
             let body = body.trim();
