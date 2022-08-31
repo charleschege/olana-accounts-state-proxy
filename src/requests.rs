@@ -29,7 +29,9 @@ impl RpcRequest {
 
     /// Checks if the Rpc `Method` and `Encoding` are supported by the proxy server
     pub(crate) fn parameter_checks(&self, responder: &mut Response<Body>) -> RpcProxyResult<bool> {
-        if !self.is_supported() {
+        dbg!(&self);
+
+        if !self.is_supported_method() {
             let mut error_data = String::new();
             error_data.push_str("Method `");
             error_data.push_str(&self.method);
@@ -46,18 +48,27 @@ impl RpcRequest {
         if let Some(encoding_data) = self.params.1.get("encoding") {
             let encoding: Encoding = encoding_data.as_str().into();
 
+            dbg!(&encoding.is_supported(responder)?);
+
             if encoding.is_supported(responder)? {
-                Ok(true)
             } else {
-                Ok(false)
+                return Ok(false);
             }
         } else {
-            Ok(true) // Defaults to `Base64`
+            // Defaults to `Base64`
+        }
+
+        let parse_parameters = Parameter::parse(&self.params.1, responder)?;
+
+        if !parse_parameters.0 {
+            Ok(false)
+        } else {
+            Ok(true)
         }
     }
 
     /// Check if a JSON Rpc Request Method is supported.
-    fn is_supported(&self) -> bool {
+    fn is_supported_method(&self) -> bool {
         matches!(self.method.as_str(), "getAccountInfo")
     }
 }
@@ -222,6 +233,63 @@ impl From<&str> for Encoding {
             "jsonparsed" => Encoding::JsonParsed,
             "base64+zstd" => Encoding::Base64Zstd,
             _ => Encoding::UnsupportedEncoding(value.to_owned()),
+        }
+    }
+}
+
+/// The parameters that are used to filter and return the required data.
+/// Some popular parameters are `encoding` and `commitment`
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Parameter {
+    /// The encoding to use when returning JSON data as specified by [Encoding] enum.
+    Encoding,
+    /// The current state of a block or transaction as specified by [Encoding] enum.
+    Commitment,
+    /// limit the returned account data using the provided offset: <usize> and length: <usize> fields;
+    /// only available for "base58", "base64" or "base64+zstd" encodings.
+    DataSlice,
+    /// sets the minimum slot that the request can be evaluated at.
+    MinContextSlot,
+    /// The parameter provided is not supported.
+    UnsupportedParameter(String),
+}
+
+impl Parameter {
+    /// Check if parameters provided are supported
+    fn parse(
+        parameters: &HashMap<String, String>,
+        responder: &mut Response<Body>,
+    ) -> RpcProxyResult<(bool, HashMap<String, Parameter>)> {
+        let mut parameter: Parameter;
+        let mut all_parameters = HashMap::<String, Parameter>::new();
+
+        for (key, _) in parameters.iter() {
+            parameter = key.as_str().into();
+
+            if let Parameter::UnsupportedParameter(unsupported_value) = parameter {
+                JsonError::new()
+                    .add_message("Parameter Not Supported")
+                    .add_data(&unsupported_value)
+                    .response(responder)?;
+
+                return Ok((false, all_parameters));
+            }
+
+            all_parameters.insert(key.clone(), parameter);
+        }
+
+        Ok((true, all_parameters))
+    }
+}
+
+impl From<&str> for Parameter {
+    fn from(value: &str) -> Self {
+        match value {
+            "encoding" => Parameter::Encoding,
+            "commitment" => Parameter::Commitment,
+            "dataSlice" => Parameter::DataSlice,
+            "minContextSlot" => Parameter::MinContextSlot,
+            _ => Parameter::UnsupportedParameter(value.to_owned()),
         }
     }
 }
