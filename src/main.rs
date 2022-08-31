@@ -108,9 +108,9 @@ async fn http_server(socket_addr: SocketAddr) -> Result<HttpServerHandle, jsonrp
         .build();
 
     let mut module = RpcModule::new(());
-    module.register_method("foo", |_, _| {
-        tracing::info!("say_hello method called!");
-        Ok("Hello there!!")
+    module.register_method("getAccountInfo", |_, _| {
+        tracing::info!("AccountInfo method invoked");
+        Ok("Processed RPC method")
     })?;
 
     HttpServerBuilder::new()
