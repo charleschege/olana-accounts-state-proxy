@@ -2,6 +2,7 @@
 This crate is a proxy server that handles fetching account information on a public key for Solana RPC requests. It handles `getAccountInfo`, `getMultipleAccounts` and `getProgramAccounts` RPC methods. It speeds up RPC requests by fetching information from a PostgreSQL server connected to a Solana RPC node as a `Geyser Plugin`.
 
 ##### Running the binary
+
 The proxy server listens at socket `http://0.0.0.0:1024` if the server is run with no extra arguments. 
 
 ###### Custom socket settings
@@ -51,3 +52,18 @@ The binary will listen on default network socket `http://0.0.0.0:1024`.
 The JSON body returned by the proxy server is in the same format as that from a Solana RPC node therefore can be parsed using any Solana RPC client.
 
 Errors encountered while parsing the JSON data, checking for supported RPC methods or supported encoding formats are returned to the client with respect to the JSON 2 errors specification - [https://www.jsonrpc.org/specification#error_object](https://www.jsonrpc.org/specification#error_object) . Solana RPC clients use the same specification enabling compatibility.
+
+#### Compiling
+
+To compile and run the crate
+
+```sh
+$ cargo run --release
+```
+
+To compile and run the crate with logging enabled (suitable for debug builds)
+
+```sh
+cargo run --release --features log_with_tracing
+```
+
