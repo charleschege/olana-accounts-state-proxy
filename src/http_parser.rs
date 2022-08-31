@@ -1,5 +1,7 @@
 use crate::{JsonError, RpcProxyError, RpcProxyResult, RpcRequest};
 use hyper::{Body, Method, Request, Response, StatusCode};
+use jsonrpsee::core::middleware::{Headers, HttpMiddleware, MethodKind, Params};
+use std::{net::SocketAddr, time::Instant};
 
 pub(crate) async fn processor(req: Request<Body>) -> RpcProxyResult<Response<Body>> {
     let mut response = Response::new(Body::empty());
@@ -53,5 +55,43 @@ pub fn parse_body(body: &str, response: &mut Response<Body>) -> RpcProxyResult<R
 
             Err(RpcProxyError::SerdeJsonError(path))
         }
+    }
+}
+
+/// The handler for incoming JSON POST requests
+#[derive(Debug, Clone)]
+pub struct RpcProxyMiddleware;
+
+impl HttpMiddleware for RpcProxyMiddleware {
+    type Instant = Instant;
+
+    // Called once the HTTP request is received, it may be a single JSON-RPC call
+    // or batch.
+    fn on_request(&self, _remote_addr: SocketAddr, _headers: &Headers) -> Instant {
+        Instant::now()
+    }
+
+    // Called once a single JSON-RPC method call is processed, it may be called multiple times
+    // on batches.
+    fn on_call(&self, method_name: &str, params: Params, kind: MethodKind) {
+        println!(
+            "Call to method: '{}' params: {:?}, kind: {}",
+            method_name, params, kind
+        );
+    }
+
+    // Called once a single JSON-RPC call is completed, it may be called multiple times
+    // on batches.
+    fn on_result(&self, method_name: &str, success: bool, started_at: Instant) {
+        println!("Call to '{}' took {:?}", method_name, started_at.elapsed());
+    }
+
+    // Called the entire JSON-RPC is completed, called on once for both single calls or batches.
+    fn on_response(&self, result: &str, started_at: Instant) {
+        println!(
+            "complete JSON-RPC response: {}, took: {:?}",
+            result,
+            started_at.elapsed()
+        );
     }
 }

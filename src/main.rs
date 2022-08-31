@@ -2,9 +2,20 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-use hyper::service::{make_service_fn, service_fn};
-use hyper::Server;
-use std::env;
+use hyper::{
+    service::{make_service_fn, service_fn},
+    Server,
+};
+use jsonrpsee::{
+    core::rpc_params,
+    http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle, RpcModule},
+};
+use socket2::{Domain, Socket, Type};
+use std::{
+    env,
+    net::{SocketAddr, TcpListener},
+};
+use tracing_subscriber::{filter::LevelFilter, util::SubscriberInitExt};
 
 mod requests;
 pub use requests::*;
@@ -35,7 +46,7 @@ const HELP_MESSAGE: [&str; 9] = [
 ];
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let mut cli_args = env::args();
 
     if cli_args.len() == 2 {
@@ -65,7 +76,7 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let socket = match get_socketaddr(cli_args) {
+    let socket_addr = match get_socketaddr(cli_args) {
         Ok(socket_addr) => socket_addr,
         Err(error) => {
             eprintln!("server error: {}", error); //TODO Log to facade
@@ -73,21 +84,38 @@ async fn main() {
         }
     };
 
-    println!("Listening at socket: `{}`", socket,);
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()?
+        .add_directive(LevelFilter::INFO.into());
+    tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(filter)
+        .finish()
+        .try_init()?;
 
-    let make_svc = make_service_fn(|_conn| async { Ok::<_, RpcProxyError>(service_fn(processor)) });
+    dbg!(http_server(socket_addr).await?.await);
 
-    let server = Server::bind(&socket).serve(make_svc);
-
-    let graceful = server.with_graceful_shutdown(shutdown_signal());
-
-    if let Err(e) = graceful.await {
-        eprintln!("server error: {}", e); //TODO Log to facade
-    }
+    Ok(())
 }
 
-async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to install CTRL+C signal handler");
+async fn http_server(socket_addr: SocketAddr) -> Result<HttpServerHandle, jsonrpsee::core::Error> {
+    let server = Server::bind(&socket_addr);
+
+    tracing::info!("{:?}", socket_addr);
+
+    let acl = AccessControlBuilder::new()
+        .allow_all_headers()
+        .allow_all_origins()
+        .allow_all_hosts()
+        .build();
+
+    let mut module = RpcModule::new(());
+    module.register_method("foo", |_, _| {
+        tracing::info!("say_hello method called!");
+        Ok("Hello there!!")
+    })?;
+
+    HttpServerBuilder::new()
+        .set_access_control(acl) //TODO
+        .set_middleware(RpcProxyMiddleware)
+        .build_from_hyper(server, socket_addr)?
+        .start(module)
 }
