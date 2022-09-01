@@ -3,23 +3,17 @@
 #![doc = include_str!("../README.md")]
 
 use hyper::Server;
-use jsonrpsee::{
-    core::Error as JsonRpcServerError,
-    http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle, RpcModule},
-};
-use std::{collections::HashMap, env, net::SocketAddr};
-
-#[cfg(feature = "log_with_tracing")]
-use tracing_subscriber::{filter::LevelFilter, util::SubscriberInitExt};
-
-mod requests;
-pub use requests::*;
+use jsonrpsee::http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle};
+use std::{env, net::SocketAddr};
 
 mod socket_parser;
 use socket_parser::get_socketaddr;
 
 mod rpc_traits;
 pub use rpc_traits::*;
+
+mod types;
+pub use types::*;
 
 const ERROR_MESSAGE: &str =
     "Invalid Number of Command-line Arguments. Expected `1`, `2` or `4` arguments. 
