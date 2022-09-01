@@ -8,6 +8,7 @@ license = "LicenseRef-TritonOne"
 
 [dependencies]
 anyhow = "1.0.63"
+async-trait = "0.1.57"
 bs58 = "0.4.0"
 hyper = { version = "0.14.20", features = ["full"] }
 jsonrpsee = { version = "0.15.1", features = [

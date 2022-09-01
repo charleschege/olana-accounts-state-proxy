@@ -681,6 +681,7 @@ name = "solana-accounts-proxy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bs58",
  "hyper",
  "jsonrpsee",
