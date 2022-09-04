@@ -6,42 +6,39 @@ use hyper::Server;
 use jsonrpsee::http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle};
 use std::{env, net::SocketAddr};
 
-mod socket_parser;
-use socket_parser::get_socketaddr;
-
 mod rpc_traits;
 pub use rpc_traits::*;
 
 mod types;
 pub use types::*;
 
-const ERROR_MESSAGE: &str =
-    "Invalid Number of Command-line Arguments. Expected `1`, `2` or `4` arguments. 
+mod postgres;
+pub use postgres::*;
+
+mod config;
+pub(crate) use config::*;
+
+const ERROR_MESSAGE: &str = "Invalid Number of Command-line Arguments. Expected `2` arguments. 
 Use `-h` argument for a list of commands";
 
-const HELP_MESSAGE: [&str; 9] = [
+const HELP_MESSAGE: [&str; 4] = [
     "solana-accounts-proxy",
     "\n",
     "   Example Usage:",
-    "       solana-accounts-proxy -ip 127.0.0.1 -port 8000",
-    "\n",
-    "    List of arguments:",
-    "       -h or --help    - Prints this help screen",
-    "       -ip             - the IP address to use instead of the default IP `0.0.0.0`",
-    "       -port           - the port to use instead of the default `1024`",
+    "       solana-accounts-proxy ../configs",
 ];
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut cli_args = env::args();
 
-    if cli_args.len() == 2 {
-        let is_help_arg = match cli_args.nth(1) {
-            Some(value) => value,
-            None => String::default(),
-        };
+    if cli_args.len() > 2 {
+        eprintln!("{}", ERROR_MESSAGE);
+        std::process::exit(1);
+    }
 
-        match is_help_arg.as_str() {
+    let cli_input_path = match cli_args.nth(1) {
+        Some(path) => match path.as_str() {
             "-h" | "--help" => {
                 for value in HELP_MESSAGE {
                     println!("{value:10}");
@@ -49,31 +46,27 @@ async fn main() -> anyhow::Result<()> {
 
                 std::process::exit(1);
             }
-            _ => {
-                eprintln!("{}", ERROR_MESSAGE);
-
-                std::process::exit(1);
-            }
+            _ => path,
+        },
+        None => {
+            eprintln!("Invalid commandline args. The path to the `ProxyConfig.toml` file must be passed when running the binary. Try `solana-accounts-proxy -h` for an example"); //TODO Log to facade
+            std::process::exit(1);
         }
-    }
+    };
 
-    if cli_args.len() > 5 {
-        eprintln!("{}", ERROR_MESSAGE);
-        std::process::exit(1);
-    }
-
-    let socket_addr = match get_socketaddr(cli_args) {
-        Ok(socket_addr) => socket_addr,
+    let proxy_config = match ProxyConfig::load_config(&cli_input_path) {
+        Ok(value) => value,
         Err(error) => {
             eprintln!("server error: {}", error); //TODO Log to facade
             std::process::exit(1);
         }
     };
+    dbg!(&proxy_config);
 
     #[cfg(feature = "log_with_tracing")]
     log()?;
 
-    let (socket_addr, server) = http_server(socket_addr).await?;
+    let (socket_addr, server) = http_server(proxy_config.get_socketaddr()).await?;
     println!("Listening at http://{:?}", socket_addr);
 
     server.await;
