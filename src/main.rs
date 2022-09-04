@@ -16,7 +16,7 @@ mod postgres;
 pub use postgres::*;
 
 mod config;
-pub(crate) use config::*;
+pub use config::*;
 
 const ERROR_MESSAGE: &str = "Invalid Number of Command-line Arguments. Expected `2` arguments. 
 Use `-h` argument for a list of commands";
@@ -61,7 +61,9 @@ async fn main() -> anyhow::Result<()> {
             std::process::exit(1);
         }
     };
-    dbg!(&proxy_config);
+
+    #[cfg(feature = "dangerous_debug")]
+    dbg!(&proxy_config); //TODO Remove
 
     #[cfg(feature = "log_with_tracing")]
     log()?;

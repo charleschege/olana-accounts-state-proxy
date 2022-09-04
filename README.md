@@ -3,31 +3,42 @@ This crate is a proxy server that handles fetching account information on a publ
 
 ##### Running the binary
 
-The proxy server listens at socket `http://0.0.0.0:1024` if the server is run with no extra arguments. 
+The binary expects a path to the ProxyConfig.toml file to run.
 
-###### Custom socket settings
+##### The `ProxyConfig.toml` file
 
-1. Running the server with a custom IP address
+```toml
+[socket]
+ip = "127.0.0.1" #optional
+port = 4000 #optional
 
-   ```sh
-   $ solana-accounts-proxy -ip 127.0.0.0
-   ```
+[postgres]
+username = "example" #required
+password = "example_password" #required
+db_ip = "localhost" #required
+db_name = "solana_txs" #required
+max_connections = 100 #optional
+min_connections = 5 #optional
+connect_timeout = 8 #optional
+idle_timeout = 8 #optional
+max_lifetime = 8 #optional
+```
 
-   If a valid IP address is not given, the server exits with an error `server error: AddrParseError`
+This file has two sections, the `[socket]` section and the `[postgres]`
 
-2. Running with a custom port which is a `u16`
+The `[socket]` section contains the `ip` part which configures the IP address of the server and the `port` which server's HTTP listening port. Both of these fields are mandatory.
 
-   ```sh
-   $ solana-accounts-proxy -port 8000
-   ```
+The `[postgres]` section covers the settings  for the Postgres connection the server uses to connect to the underlying data store.
 
-   If an invalid `u16` is given for the port, the server exits with a custom error `server error: Int(...`
-
-3. Running with both a custom IP and port
-
-   ```sh
-   $ solana-accounts-proxy -ip 127.0.0.0 -port 8000
-   ```
+- `username` - The username of a Postgres database URL. This field is mandatory.
+- `password` -  The password of a Postgres database URL. This field is mandatory.
+- `db_ip`  - The host name of a Postgres database URL which is mostly `localhost`. This field is mandatory.
+- `db_name` - The name of the database to connect to. The field is mandatory.
+- `max_connections` - The maximum number of connections the database connection should use. The field is optional.
+- `min_connections` - The maximum number of connections the database connection should use. The field is optional.
+- `connect_timeout` - Set the timeout duration when acquiring a connection. The field is optional.
+- `idle_timeout` - Set the idle duration before closing a connection. The field is optional.
+- `max_lifetime` - Set the maximum lifetime of individual connections. The field is optional.
 
 ##### Making a request to this server
 The server only accepts `POST` requests and will only process supported RPC methods `getAccountInfo`, `getMultipleAccounts` and `getProgramAccounts`.
@@ -58,12 +69,12 @@ Errors encountered while parsing the JSON data, checking for supported RPC metho
 To compile and run the crate
 
 ```sh
-$ cargo run --release
+$ cargo run --release -- /path/to/ProxyConfig.toml/file
 ```
 
 To compile and run the crate with logging enabled (suitable for debug builds)
 
 ```sh
-cargo run --release --features log_with_tracing
+cargo run --release --features log_with_tracing -- /path/to/ProxyConfig.toml/file
 ```
 
