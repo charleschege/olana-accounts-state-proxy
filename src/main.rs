@@ -62,8 +62,16 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    #[cfg(feature = "dangerous_debug")]
-    dbg!(&proxy_config); //TODO Remove
+    {
+        #[cfg(all(debug_assertions, feature = "dangerous_debug",))]
+        dbg!(&proxy_config);
+
+        #[cfg(all(debug_assertions, feature = "dangerous_debug",))]
+        println!(
+            "POSTGRES_URL: {}",
+            &proxy_config.postgres_config().postgres_url()
+        );
+    }
 
     #[cfg(feature = "log_with_tracing")]
     log()?;

@@ -7,6 +7,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
+use tokio_postgres::config::{ChannelBinding, SslMode};
 
 /// The configuration of the socket and database
 #[derive(Debug, Deserialize)]
@@ -34,6 +35,11 @@ impl ProxyConfig {
     pub fn get_socketaddr(&self) -> SocketAddr {
         SocketAddr::new(IpAddr::V4(self.socket.ip), self.socket.port)
     }
+
+    /// Load postgres configuration
+    pub(crate) fn postgres_config(&self) -> &PostgresConfig {
+        &self.postgres
+    }
 }
 
 /// Configuration specific to the IP address and port of the proxy server
@@ -44,35 +50,79 @@ pub struct SocketConfig {
     port: u16,
 }
 
-/// Configuration specific to the Postgres connection of the proxy server
+/// The configuration to pass to the Postgres connection
 #[derive(Deserialize)]
 pub struct PostgresConfig {
-    username: Secret<String>,
-    password: Secret<String>,
-    db_ip: String,
-    db_name: Secret<String>,
-    pub(crate) max_connections: Option<u32>,
-    pub(crate) min_connections: Option<u32>,
+    pub(crate) user: Secret<String>,
+    pub(crate) password: Option<Secret<String>>,
+    pub(crate) dbname: Secret<String>,
+    pub(crate) host: String,
+    pub(crate) port: Option<u16>,
+    // Command line options to pass to the Postgres server
+    pub(crate) options: Option<String>,
+    //  Sets the application name to be reported in statistics and logs
+    pub(crate) application_name: Option<String>,
+    // `Require`, `Prefer` or `Disable`
+    pub(crate) ssl_mode: Option<String>,
     pub(crate) connect_timeout: Option<u64>,
-    pub(crate) idle_timeout: Option<u64>,
-    pub(crate) max_lifetime: Option<u64>,
+    // Channel binding is a concept defined in RFC 5056,
+    // to ensure that the frontend and the backend connecting to each other are the same
+    // in order to prevent man-in-the-middle attacks.
+    // `Require`, `Prefer` or `Disable`
+    pub(crate) channel_binding: Option<String>,
 }
 
 impl PostgresConfig {
+    /// Get the SSL mode by converting the configuration to [SslMode]
+    pub fn get_ssl_mode(&self) -> SslMode {
+        if let Some(ssl_mode) = &self.ssl_mode {
+            match ssl_mode.to_lowercase().as_str() {
+                "prefer" => SslMode::Prefer,
+                "disable" => SslMode::Disable,
+                _ => SslMode::Require,
+            }
+        } else {
+            SslMode::Require
+        }
+    }
+
+    /// Get the channel binding mode by converting the configuration to [ChannelBinding]
+    pub fn get_channel_binding(&self) -> ChannelBinding {
+        if let Some(channel_binding) = &self.channel_binding {
+            match channel_binding.to_lowercase().as_str() {
+                "prefer" => ChannelBinding::Prefer,
+                "disable" => ChannelBinding::Disable,
+                _ => ChannelBinding::Require,
+            }
+        } else {
+            ChannelBinding::Require
+        }
+    }
+
     /// Compute the postgres url `postgres://username:password@host/database`
-    pub fn postgres_url(&self) -> Secret<String> {
+    #[cfg(all(debug_assertions, feature = "dangerous_debug"))]
+    pub fn postgres_url(&self) -> String {
         use secrecy::ExposeSecret;
 
-        let mut url = "postgres://".to_owned();
-        url.push_str(self.username.expose_secret());
-        url.push(':');
-        url.push_str(self.password.expose_secret());
-        url.push('@');
-        url.push_str(&self.db_ip);
-        url.push('/');
-        url.push_str(self.db_name.expose_secret());
+        let password = match &self.password {
+            Some(password) => {
+                let mut password_formatting = String::from(":");
+                password_formatting.push_str(password.expose_secret());
 
-        Secret::new(url)
+                password_formatting
+            }
+            None => "".to_owned(),
+        };
+
+        let mut url = "postgres://".to_owned();
+        url.push_str(self.user.expose_secret());
+        url.push_str(&password);
+        url.push('@');
+        url.push_str(&self.host);
+        url.push('/');
+        url.push_str(self.dbname.expose_secret());
+
+        url
     }
 }
 
@@ -80,15 +130,22 @@ impl PostgresConfig {
 impl fmt::Debug for PostgresConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PostgresConfig")
-            .field("username", &"REDACTED[POSTGRES_USERNAME]")
-            .field("password", &"REDACTED[POSTGRES_PASSWORD]")
-            .field("db_ip", &self.db_ip)
-            .field("db_name", &"REDACTED[POSTGRES_DATABASE]")
-            .field("max_connections", &self.max_connections)
-            .field("min_connections", &self.min_connections)
+            .field("user", &"REDACTED[POSTGRES_USER]")
+            .field("password", {
+                if self.password.is_some() {
+                    &Some(&"REDACTED[POSTGRES_PASSWORD]")
+                } else {
+                    &Option::<String>::None
+                }
+            })
+            .field("dbname", &"REDACTED[POSTGRES_DATABASE]")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("options", &self.options)
+            .field("application_name", &self.application_name)
+            .field("ssl_mode", &self.ssl_mode)
             .field("connect_timeout", &self.connect_timeout)
-            .field("idle_timeout", &self.idle_timeout)
-            .field("max_lifetime", &self.max_lifetime)
+            .field("channel_binding", &self.channel_binding)
             .finish()
     }
 }
@@ -99,15 +156,22 @@ impl fmt::Debug for PostgresConfig {
         use secrecy::ExposeSecret;
 
         f.debug_struct("PostgresConfig")
-            .field("username", &self.username.expose_secret())
-            .field("password", &self.password.expose_secret())
-            .field("db_ip", &self.db_ip)
-            .field("db_name", &self.db_name.expose_secret())
-            .field("max_connections", &self.max_connections)
-            .field("min_connections", &self.min_connections)
+            .field("user", &self.user.expose_secret())
+            .field("password", &{
+                if let Some(password) = &self.password {
+                    Some(password.expose_secret())
+                } else {
+                    Option::<&String>::None
+                }
+            })
+            .field("dbname", &self.dbname.expose_secret())
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("options", &self.options)
+            .field("application_name", &self.application_name)
+            .field("ssl_mode", &self.ssl_mode)
             .field("connect_timeout", &self.connect_timeout)
-            .field("idle_timeout", &self.idle_timeout)
-            .field("max_lifetime", &self.max_lifetime)
+            .field("channel_binding", &self.channel_binding)
             .finish()
     }
 }

@@ -78,3 +78,6 @@ To compile and run the crate with logging enabled (suitable for debug builds)
 cargo run --release --features log_with_tracing -- /path/to/ProxyConfig.toml/file
 ```
 
+##### Extra compile time features
+
+- `dangerous_debug` - The Postgres database name, password and username are protected from being accidentally logged or copied in memory and are automatically zeroed out from memory when they are dropped/out of scope. Therefore, debugging the `PostgresConfig` struct would result in seeing `REDACTED[...]` string output rather than the actual password or username. Using the `dangerous_debug` feature allows you to see the contents of the password, username and database name when compiling in debug mode.
