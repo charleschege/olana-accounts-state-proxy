@@ -17,6 +17,7 @@ jsonrpsee = { version = "0.15.1", features = [
     "jsonrpsee-core",
     "tracing",
 ] }
+lazy_static = "1.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.144", features = ["derive"] }
 tokio = { version = "1.20.1", features = ["full"] }

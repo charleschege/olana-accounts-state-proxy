@@ -863,6 +863,7 @@ dependencies = [
  "bs58",
  "hyper",
  "jsonrpsee",
+ "lazy_static",
  "secrecy",
  "serde",
  "tokio",

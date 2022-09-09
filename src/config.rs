@@ -7,7 +7,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
-use tokio_postgres::config::{ChannelBinding, SslMode};
 
 /// The configuration of the socket and database
 #[derive(Debug, Deserialize)]
@@ -49,56 +48,37 @@ pub struct SocketConfig {
     ip: Ipv4Addr,
     port: u16,
 }
-
+/* TODO In case TLS will be required in the future
+/// Configures the TLS certificate and enforces that there is a
+/// certificate `.pem` file that can load the database certificate
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TlsConfig {
+    // `Require`, `Prefer` or `Disable`
+    pub(crate) ssl_mode: String,
+    // Channel binding is a concept defined in RFC 5056,
+    // to ensure that the frontend and the backend connecting to each other are the same
+    // in order to prevent man-in-the-middle attacks.
+    // `Require`, `Prefer` or `Disable`
+    pub(crate) channel_binding: String,
+    pub(crate) cert_path: PathBuf,
+}
+*/
 /// The configuration to pass to the Postgres connection
 #[derive(Deserialize)]
 pub struct PostgresConfig {
     pub(crate) user: Secret<String>,
     pub(crate) password: Option<Secret<String>>,
-    pub(crate) dbname: Secret<String>,
+    pub(crate) dbname: String,
     pub(crate) host: String,
     pub(crate) port: Option<u16>,
     // Command line options to pass to the Postgres server
     pub(crate) options: Option<String>,
     //  Sets the application name to be reported in statistics and logs
     pub(crate) application_name: Option<String>,
-    // `Require`, `Prefer` or `Disable`
-    pub(crate) ssl_mode: Option<String>,
     pub(crate) connect_timeout: Option<u64>,
-    // Channel binding is a concept defined in RFC 5056,
-    // to ensure that the frontend and the backend connecting to each other are the same
-    // in order to prevent man-in-the-middle attacks.
-    // `Require`, `Prefer` or `Disable`
-    pub(crate) channel_binding: Option<String>,
 }
 
 impl PostgresConfig {
-    /// Get the SSL mode by converting the configuration to [SslMode]
-    pub fn get_ssl_mode(&self) -> SslMode {
-        if let Some(ssl_mode) = &self.ssl_mode {
-            match ssl_mode.to_lowercase().as_str() {
-                "prefer" => SslMode::Prefer,
-                "disable" => SslMode::Disable,
-                _ => SslMode::Require,
-            }
-        } else {
-            SslMode::Require
-        }
-    }
-
-    /// Get the channel binding mode by converting the configuration to [ChannelBinding]
-    pub fn get_channel_binding(&self) -> ChannelBinding {
-        if let Some(channel_binding) = &self.channel_binding {
-            match channel_binding.to_lowercase().as_str() {
-                "prefer" => ChannelBinding::Prefer,
-                "disable" => ChannelBinding::Disable,
-                _ => ChannelBinding::Require,
-            }
-        } else {
-            ChannelBinding::Require
-        }
-    }
-
     /// Compute the postgres url `postgres://username:password@host/database`
     #[cfg(all(debug_assertions, feature = "dangerous_debug"))]
     pub fn postgres_url(&self) -> String {
@@ -120,7 +100,7 @@ impl PostgresConfig {
         url.push('@');
         url.push_str(&self.host);
         url.push('/');
-        url.push_str(self.dbname.expose_secret());
+        url.push_str(&self.dbname);
 
         url
     }
@@ -138,14 +118,12 @@ impl fmt::Debug for PostgresConfig {
                     &Option::<String>::None
                 }
             })
-            .field("dbname", &"REDACTED[POSTGRES_DATABASE]")
+            .field("dbname", &self.dbname)
             .field("host", &self.host)
             .field("port", &self.port)
             .field("options", &self.options)
             .field("application_name", &self.application_name)
-            .field("ssl_mode", &self.ssl_mode)
             .field("connect_timeout", &self.connect_timeout)
-            .field("channel_binding", &self.channel_binding)
             .finish()
     }
 }
@@ -164,14 +142,12 @@ impl fmt::Debug for PostgresConfig {
                     Option::<&String>::None
                 }
             })
-            .field("dbname", &self.dbname.expose_secret())
+            .field("dbname", &self.dbname)
             .field("host", &self.host)
             .field("port", &self.port)
             .field("options", &self.options)
             .field("application_name", &self.application_name)
-            .field("ssl_mode", &self.ssl_mode)
             .field("connect_timeout", &self.connect_timeout)
-            .field("channel_binding", &self.channel_binding)
             .finish()
     }
 }

@@ -4,10 +4,14 @@
 
 use hyper::Server;
 use jsonrpsee::http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle};
-use std::{env, net::SocketAddr};
+use std::{
+    env,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 
-mod rpc_traits;
-pub use rpc_traits::*;
+mod rpc;
+pub use rpc::*;
 
 mod types;
 pub use types::*;
@@ -28,8 +32,22 @@ const HELP_MESSAGE: [&str; 4] = [
     "       solana-accounts-proxy ../configs",
 ];
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+use lazy_static::lazy_static;
+use tokio_postgres::{tls::NoTlsStream, Client, Connection, Socket};
+
+lazy_static! {
+    static ref USER_CONFIG: ProxyConfig = load_user_config();
+    static ref DB: Arc<Mutex<Option<Db>>> = Arc::new(Mutex::new(Option::None));
+}
+
+/// The database [Connection] and database [Client]
+pub struct Db {
+    pub(crate) client: Client,
+    pub(crate) conn: Connection<Socket, NoTlsStream>,
+}
+
+///
+pub fn load_user_config() -> ProxyConfig {
     let mut cli_args = env::args();
 
     if cli_args.len() > 2 {
@@ -54,29 +72,38 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let proxy_config = match ProxyConfig::load_config(&cli_input_path) {
+    match ProxyConfig::load_config(&cli_input_path) {
         Ok(value) => value,
         Err(error) => {
             eprintln!("server error: {}", error); //TODO Log to facade
             std::process::exit(1);
         }
-    };
+    }
+}
 
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     {
         #[cfg(all(debug_assertions, feature = "dangerous_debug",))]
-        dbg!(&proxy_config);
+        dbg!(&*USER_CONFIG);
 
         #[cfg(all(debug_assertions, feature = "dangerous_debug",))]
         println!(
             "POSTGRES_URL: {}",
-            &proxy_config.postgres_config().postgres_url()
+            USER_CONFIG.postgres_config().postgres_url()
         );
     }
 
     #[cfg(feature = "log_with_tracing")]
     log()?;
 
-    let (socket_addr, server) = http_server(proxy_config.get_socketaddr()).await?;
+    let db = PgConnection::connect(USER_CONFIG.postgres_config()).await?;
+    DB.lock().unwrap().replace(Db {
+        client: db.0,
+        conn: db.1,
+    });
+
+    let (socket_addr, server) = http_server(USER_CONFIG.get_socketaddr()).await?;
     println!("Listening at http://{:?}", socket_addr);
 
     server.await;
