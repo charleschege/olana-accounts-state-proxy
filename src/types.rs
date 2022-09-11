@@ -64,7 +64,7 @@ pub struct Parameters {
 }
 
 /// Which format the proxy server should use when transmitting a response data to a client
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub enum Encoding {
     /// Use Base58 encoding
     #[serde(rename = "base58")]
@@ -80,8 +80,40 @@ pub enum Encoding {
     JsonParsed,
 }
 
+impl Encoding {
+    /// Check which encoding format to use on the data field
+    pub fn get_encoding(parameters: Option<&Parameters>) -> Encoding {
+        if let Some(parameters) = parameters {
+            match &parameters.encoding {
+                None => Encoding::Base58,
+                Some(encoding) => *encoding,
+            }
+        } else {
+            Encoding::Base58
+        }
+    }
+
+    /// Encode data to the chosen format
+    pub fn encode(&self, data: &[u8]) -> String {
+        match self {
+            Self::Base58 => bs58::encode(data).into_string(),
+            _ => panic!(), //TODO
+        }
+    }
+
+    /// Used to return the encoding type in the JSON response
+    pub fn into_string(&self) -> &str {
+        match self {
+            Self::Base58 => "base58",
+            Self::Base64 => "base64",
+            Self::Base64Zstd => "base64+zstd",
+            Self::JsonParsed => "jsonParsed",
+        }
+    }
+}
+
 /// Whether a block has been confirmed, is being processed or has been finalized
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Commitment {
     /// A block has been processed by the RPC node
@@ -90,6 +122,28 @@ pub enum Commitment {
     Confirmed,
     /// A block has been finalized and changes cannot be rolled back
     Finalized,
+}
+
+impl Commitment {
+    /// Convert to a &str usable in the SQL query
+    pub fn queryable<'a>(&self) -> &'a str {
+        match self {
+            Self::Confirmed => "Confirmed",
+            Self::Processed => "Processed",
+            Self::Finalized => "Rooted",
+        }
+    }
+    /// Returns the commitment level to use when executing the query
+    pub fn get_commitment<'a>(parameters: Option<&Parameters>) -> &'a str {
+        if let Some(parameters) = parameters {
+            match parameters.commitment {
+                Some(commitment) => commitment.queryable(),
+                None => Commitment::Finalized.queryable(),
+            }
+        } else {
+            Commitment::Finalized.queryable()
+        }
+    }
 }
 
 /// Configures the offset and the length

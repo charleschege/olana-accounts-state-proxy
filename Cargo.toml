@@ -10,7 +10,9 @@ license = "LicenseRef-TritonOne"
 anyhow = "1.0.63"
 async-trait = "0.1.57"
 bs58 = "0.4.0"
+hex = "0.4.3"
 hyper = { version = "0.14.20", features = ["full"] }
+json = "0.12.4"
 jsonrpsee = { version = "0.15.1", features = [
     "http-server",
     "macros",
@@ -20,17 +22,17 @@ jsonrpsee = { version = "0.15.1", features = [
 lazy_static = "1.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.144", features = ["derive"] }
+sql_query_builder = { version = "1.0.1", features = ["postgresql"] }
 tokio = { version = "1.20.1", features = ["full"] }
 tokio-postgres = "0.7.7"
 toml = "0.5.9"
-tracing = { version = "0.1.36", optional = true }
+tracing = { version = "0.1.36" }
 tracing-subscriber = { version = "0.3.15", features = [
     "env-filter",
-], optional = true }
+]}
 
 
 [features]
 default = ["safe_debug"]
-log_with_tracing = ["dep:tracing", "dep:tracing-subscriber"]
 dangerous_debug = []
 safe_debug = []

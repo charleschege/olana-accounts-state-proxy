@@ -4,11 +4,10 @@
 
 use hyper::Server;
 use jsonrpsee::http_server::{AccessControlBuilder, HttpServerBuilder, HttpServerHandle};
-use std::{
-    env,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use lazy_static::lazy_static;
+use std::net::SocketAddr;
+use tokio::sync::RwLock;
+use tokio_postgres::Client;
 
 mod rpc;
 pub use rpc::*;
@@ -22,63 +21,9 @@ pub use postgres::*;
 mod config;
 pub use config::*;
 
-const ERROR_MESSAGE: &str = "Invalid Number of Command-line Arguments. Expected `2` arguments. 
-Use `-h` argument for a list of commands";
-
-const HELP_MESSAGE: [&str; 4] = [
-    "solana-accounts-proxy",
-    "\n",
-    "   Example Usage:",
-    "       solana-accounts-proxy ../configs",
-];
-
-use lazy_static::lazy_static;
-use tokio_postgres::{tls::NoTlsStream, Client, Connection, Socket};
-
 lazy_static! {
     static ref USER_CONFIG: ProxyConfig = load_user_config();
-    static ref DB: Arc<Mutex<Option<Db>>> = Arc::new(Mutex::new(Option::None));
-}
-
-/// The database [Connection] and database [Client]
-pub struct Db {
-    pub(crate) client: Client,
-    pub(crate) conn: Connection<Socket, NoTlsStream>,
-}
-
-///
-pub fn load_user_config() -> ProxyConfig {
-    let mut cli_args = env::args();
-
-    if cli_args.len() > 2 {
-        eprintln!("{}", ERROR_MESSAGE);
-        std::process::exit(1);
-    }
-
-    let cli_input_path = match cli_args.nth(1) {
-        Some(path) => match path.as_str() {
-            "-h" | "--help" => {
-                for value in HELP_MESSAGE {
-                    println!("{value:10}");
-                }
-
-                std::process::exit(1);
-            }
-            _ => path,
-        },
-        None => {
-            eprintln!("Invalid commandline args. The path to the `ProxyConfig.toml` file must be passed when running the binary. Try `solana-accounts-proxy -h` for an example"); //TODO Log to facade
-            std::process::exit(1);
-        }
-    };
-
-    match ProxyConfig::load_config(&cli_input_path) {
-        Ok(value) => value,
-        Err(error) => {
-            eprintln!("server error: {}", error); //TODO Log to facade
-            std::process::exit(1);
-        }
-    }
+    static ref CLIENT: RwLock<Option<Client>> = RwLock::new(Option::None);
 }
 
 #[tokio::main]
@@ -94,17 +39,24 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    #[cfg(feature = "log_with_tracing")]
     log()?;
 
-    let db = PgConnection::connect(USER_CONFIG.postgres_config()).await?;
-    DB.lock().unwrap().replace(Db {
-        client: db.0,
-        conn: db.1,
-    });
+    match PgConnection::connect(USER_CONFIG.postgres_config()).await {
+        Ok(value) => {
+            CLIENT.write().await.replace(value);
+        }
+        Err(error) => {
+            tracing::error!(
+                "Unable to initialize `tokio` runtime: `{:?}`",
+                error.to_string()
+            );
+
+            std::process::exit(1)
+        }
+    }
 
     let (socket_addr, server) = http_server(USER_CONFIG.get_socketaddr()).await?;
-    println!("Listening at http://{:?}", socket_addr);
+    tracing::info!("Listening at http://{:?}", socket_addr);
 
     server.await;
 
@@ -132,7 +84,6 @@ async fn http_server(
     Ok((addr, handle))
 }
 
-#[cfg(feature = "log_with_tracing")]
 fn log() -> anyhow::Result<()> {
     tracing_subscriber::FmtSubscriber::builder()
 		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())

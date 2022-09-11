@@ -1,13 +1,57 @@
 use secrecy::Secret;
 use serde::{de, Deserialize, Serialize};
 use std::{
-    fmt,
+    env, fmt,
     fs::File,
     io::Read,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
 
+const ERROR_MESSAGE: &str = "Invalid Number of Command-line Arguments. Expected `2` arguments. 
+Use `-h` argument for a list of commands";
+
+const HELP_MESSAGE: [&str; 4] = [
+    "solana-accounts-proxy",
+    "\n",
+    "   Example Usage:",
+    "       solana-accounts-proxy ../configs",
+];
+/// Reads the user configuration input from [stdin] and
+/// transforms the input to a [ProxyConfig]
+pub fn load_user_config() -> ProxyConfig {
+    let mut cli_args = env::args();
+
+    if cli_args.len() > 2 {
+        eprintln!("{}", ERROR_MESSAGE);
+        std::process::exit(1);
+    }
+
+    let cli_input_path = match cli_args.nth(1) {
+        Some(path) => match path.as_str() {
+            "-h" | "--help" => {
+                for value in HELP_MESSAGE {
+                    println!("{value:10}");
+                }
+
+                std::process::exit(1);
+            }
+            _ => path,
+        },
+        None => {
+            eprintln!("Invalid commandline args. The path to the `ProxyConfig.toml` file must be passed when running the binary. Try `solana-accounts-proxy -h` for an example"); //TODO Log to facade
+            std::process::exit(1);
+        }
+    };
+
+    match ProxyConfig::load_config(&cli_input_path) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("server error: {}", error); //TODO Log to facade
+            std::process::exit(1);
+        }
+    }
+}
 /// The configuration of the socket and database
 #[derive(Debug, Deserialize)]
 pub struct ProxyConfig {
