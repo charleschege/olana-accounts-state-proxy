@@ -1,6 +1,6 @@
 use crate::{
-    Commitment, Encoding, GetAccountInfoRow, Parameters, PgConnection, PubKey, RpcProxyServer,
-    CLIENT,
+    Commitment, Encoding, GetAccountInfo, GetAccountInfoRow, Parameters, PgConnection, PubKey,
+    RpcProxyServer, CLIENT,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -16,17 +16,17 @@ impl RpcProxyServer for RpcProxyImpl {
         &self,
         base58_public_key: String,
         parameters: Option<Parameters>,
-    ) -> RpcResult<String> {
+    ) -> RpcResult<Option<GetAccountInfo>> {
         PubKey::parse(&base58_public_key)?;
 
         let encoding = Encoding::get_encoding(parameters.as_ref());
 
         match get_account_info(&base58_public_key, parameters.as_ref()).await? {
-            None => Ok(json::Null.to_string()),
+            None => Ok(None),
             Some(account) => {
                 let owner = get_owner(&account.owner_id.to_string()).await?;
 
-                Ok(account.to_json(encoding, &owner)?.to_string())
+                Ok(Some(account.prepare_data(encoding, &owner)?))
             }
         }
     }

@@ -1,30 +1,81 @@
-use sea_orm::entity::prelude::*;
+use core::fmt;
+use jsonrpsee::core::RpcResult;
+use tokio_postgres::Row;
 
-use crate::Base58PublicKey;
+use crate::{Context, GetAccountInfo, RpcValue};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-#[sea_orm(table_name = "account_info")]
-pub struct Model {
-    #[sea_orm(primary_key)]
-    pub account_id: i32,
-    #[sea_orm(unique)]
-    pub key: Base58PublicKey,
-    pub is_signer: bool,
-    pub is_writable: bool,
-    pub lamports: u64,
-    pub data: Vec<u8>,
-    pub owner: Base58PublicKey,
-    pub executable: bool,
-    pub rent_epoch: u64,
+/// Raw information from SQL query to getAccountInfo
+pub struct GetAccountInfoRow {
+    pubkey: String,
+    slot: i64,
+    write_version: i64,
+    data: Vec<u8>,
+    executable: bool,
+    pub(crate) owner_id: i64,
+    lamports: i64,
+    rent_epoch: i64,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!("No RelationDef")
+impl fmt::Debug for GetAccountInfoRow {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GetAccountInfoRow")
+            .field("pubkey", &self.pubkey)
+            .field("slot", &self.slot)
+            .field("write_version", &self.write_version)
+            .field("data", &hex::encode(&self.data))
+            .field("executable", &self.executable)
+            .field("owner_id", &self.owner_id)
+            .field("lamports", &self.lamports)
+            .field("rent_epoch", &self.rent_epoch)
+            .finish()
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+impl From<&Row> for GetAccountInfoRow {
+    fn from(row: &Row) -> Self {
+        let pubkey: String = row.get(0);
+        let slot: i64 = row.get(1);
+        let write_version: i64 = row.get(2);
+        let data: Vec<u8> = row.get(3);
+        let executable: bool = row.get(4);
+        let owner_id: i64 = row.get(5);
+        let lamports: i64 = row.get(6);
+        let rent_epoch: i64 = row.get(7);
+
+        GetAccountInfoRow {
+            pubkey,
+            slot,
+            write_version,
+            data,
+            executable,
+            owner_id,
+            lamports,
+            rent_epoch,
+        }
+    }
+}
+
+impl GetAccountInfoRow {
+    /// Convert to JSON format
+    pub fn prepare_data(
+        &self,
+        encoding: crate::Encoding,
+        owner: &str,
+    ) -> RpcResult<GetAccountInfo> {
+        let prepare_data = GetAccountInfo {
+            context: Context { slot: self.slot },
+            value: RpcValue {
+                data: (
+                    encoding.encode(&self.data)?,
+                    encoding.into_string().to_owned(),
+                ),
+                executable: self.executable,
+                lamports: self.lamports,
+                owner: owner.to_owned(),
+                rent_epoch: self.rent_epoch,
+            },
+        };
+
+        Ok(prepare_data)
+    }
+}
