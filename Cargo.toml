@@ -38,3 +38,6 @@ zstd = "0.11.2"
 default = ["safe_debug"]
 dangerous_debug = []
 safe_debug = []
+
+[dev-dependencies]
+minreq = { version = "2.6.0", features = ["https-rustls"] }

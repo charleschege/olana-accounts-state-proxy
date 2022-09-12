@@ -1,0 +1,13 @@
+[socket]
+ip = "127.0.0.1"
+port = 4000
+
+[postgres]
+user =  "solana"
+dbname =  "solana"
+host =  "localhost"
+# password =  "solana" # Optional field
+# options =  "foobar" # Optional field
+# application_name =  "foobar"  # Optional field
+# port =  5432 # Optional field
+# connect_timeout =  120  # Optional field
