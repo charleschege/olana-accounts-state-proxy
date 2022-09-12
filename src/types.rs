@@ -2,6 +2,8 @@ use core::fmt;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use serde::Deserialize;
 
+use crate::ErrorHandler;
+
 /// Holds and ed25519 public key for a Solana program or account
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,9 +15,9 @@ impl PubKey {
         let decoded_bytes = match bs58::decode(&value).into_vec() {
             Ok(value) => value,
             Err(_) => {
-                return Err(JsonRpseeError::Custom(
-                    "The encoded public key is not valid Base58 format".to_owned(),
-                ))
+                return Err(
+                    ErrorHandler::new("The encoded public key is not valid Base58 format").build(),
+                )
             }
         };
 
@@ -29,7 +31,7 @@ impl PubKey {
                 error.push_str(decoded_bytes_len.to_string().as_str());
                 error.push_str("` bytes instead of `32 bytes`.");
 
-                return Err(JsonRpseeError::Custom(error));
+                return Err(ErrorHandler::new(&error).build());
             }
         };
 
@@ -94,10 +96,24 @@ impl Encoding {
     }
 
     /// Encode data to the chosen format
-    pub fn encode(&self, data: &[u8]) -> String {
+    pub fn encode(&self, data: &[u8]) -> RpcResult<String> {
         match self {
-            Self::Base58 => bs58::encode(data).into_string(),
-            Self::Base64 => base64::encode(data),
+            Self::Base58 => Ok(bs58::encode(data).into_string()),
+            Self::Base64 => Ok(base64::encode(data)),
+            Self::Base64Zstd => {
+                let mut buffer = data.to_vec();
+                let encoder = match zstd::Encoder::new(&mut buffer, 3) {
+                    Ok(data) => data,
+                    Err(error) => return Err(ErrorHandler::new(&error.to_string()).build()),
+                };
+
+                match encoder.finish() {
+                    Ok(data) => data,
+                    Err(error) => return Err(ErrorHandler::new(&error.to_string()).build()),
+                };
+
+                Ok(base64::encode(&buffer))
+            }
             _ => panic!(), //TODO
         }
     }

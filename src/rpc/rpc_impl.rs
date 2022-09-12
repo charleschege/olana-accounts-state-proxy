@@ -21,12 +21,12 @@ impl RpcProxyServer for RpcProxyImpl {
 
         let encoding = Encoding::get_encoding(parameters.as_ref());
 
-        match get_account_info(&base58_public_key, parameters.as_ref(), encoding).await? {
+        match get_account_info(&base58_public_key, parameters.as_ref()).await? {
             None => Ok(json::Null.to_string()),
             Some(account) => {
                 let owner = get_owner(&account.owner_id.to_string()).await?;
 
-                Ok(account.to_json(encoding, &owner).to_string())
+                Ok(account.to_json(encoding, &owner)?.to_string())
             }
         }
     }
@@ -82,7 +82,6 @@ pub fn where_pubkey(base58_public_key: &str) -> String {
 pub async fn get_account_info(
     base58_public_key: &str,
     parameters: Option<&Parameters>,
-    encoding: Encoding,
 ) -> RpcResult<Option<GetAccountInfoRow>> {
     let commitment = Commitment::get_commitment(parameters);
 

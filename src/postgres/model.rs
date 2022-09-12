@@ -1,4 +1,5 @@
 use core::fmt;
+use jsonrpsee::core::RpcResult;
 use tokio_postgres::Row;
 
 /// Raw information from SQL query to getAccountInfo
@@ -54,14 +55,14 @@ impl From<&Row> for GetAccountInfoRow {
 
 impl GetAccountInfoRow {
     /// Convert to JSON format
-    pub fn to_json(&self, encoding: crate::Encoding, owner: &str) -> json::JsonValue {
-        json::object! {
+    pub fn to_json(&self, encoding: crate::Encoding, owner: &str) -> RpcResult<json::JsonValue> {
+        let to_json = json::object! {
             "context": json::object! {
                 "slot": self.slot,
             },
             "value": json::object! {
                 "data": json::array![
-                    encoding.encode(&self.data),
+                    encoding.encode(&self.data)?,
                     encoding.into_string(),
                 ],
                 "executable": self.executable,
@@ -69,7 +70,9 @@ impl GetAccountInfoRow {
                 "owner": owner,
                 "rentEpoch": self.rent_epoch
             }
-        }
+        };
+
+        Ok(to_json)
     }
 }
 

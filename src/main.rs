@@ -56,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let (socket_addr, server) = http_server(USER_CONFIG.get_socketaddr()).await?;
-    tracing::debug!("Listening at http://{:?}", socket_addr);
+    tracing::info!("Listening at http://{:?}", socket_addr);
 
     server.await;
 
