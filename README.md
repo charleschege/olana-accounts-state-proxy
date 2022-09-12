@@ -9,19 +9,18 @@ The binary expects a path to the ProxyConfig.toml file to run.
 
 ```toml
 [socket]
-ip = "127.0.0.1" #optional
-port = 4000 #optional
+ip = "127.0.0.1" # Required field
+port = 4000 # Required field
 
 [postgres]
-username = "example" #required
-password = "example_password" #required
-db_ip = "localhost" #required
-db_name = "solana_txs" #required
-max_connections = 100 #optional
-min_connections = 5 #optional
-connect_timeout = 8 #optional
-idle_timeout = 8 #optional
-max_lifetime = 8 #optional
+user =  "solana" # Required field
+dbname =  "solana" # Required field
+host =  "localhost" # Required field
+password =  "solana", # Optional field
+options =  "foobar", # Optional field
+application_name =  "solana_rpc_proxy", # Optional field
+port =  5432 # Optional field
+connect_timeout =  120,  # Optional field
 ```
 
 This file has two sections, the `[socket]` section and the `[postgres]`
@@ -30,19 +29,35 @@ The `[socket]` section contains the `ip` part which configures the IP address of
 
 The `[postgres]` section covers the settings  for the Postgres connection the server uses to connect to the underlying data store.
 
-- `username` - The username of a Postgres database URL. This field is mandatory.
-- `password` -  The password of a Postgres database URL. This field is mandatory.
-- `db_ip`  - The host name of a Postgres database URL which is mostly `localhost`. This field is mandatory.
-- `db_name` - The name of the database to connect to. The field is mandatory.
-- `max_connections` - The maximum number of connections the database connection should use. The field is optional.
-- `min_connections` - The maximum number of connections the database connection should use. The field is optional.
-- `connect_timeout` - Set the timeout duration when acquiring a connection. The field is optional.
-- `idle_timeout` - Set the idle duration before closing a connection. The field is optional.
-- `max_lifetime` - Set the maximum lifetime of individual connections. The field is optional.
+- `user` - The user of a Postgres database URL. This field is mandatory.
+- `dbname` - The database to connect to. This field is mandatory.
+- `host` - The host IP or domain running the database.  This field is mandatory.
+- `password` - The password to connect to the database.  This field is optional.
+- `options` - The  arguments to pass to the database server when initiating the connection,  This field is optional.
+- `application_name` - The name to use in logging and analytics.  This field is optional.
+- `port` - The port to connect to on the host. Default is `5432`.  This field is optional.
+- `connect_timeout` - Sets the timeout applied to socket-level connection attempts. Default is no limit. This field is optional.
+
+##### Running the server
+
+To run the server
+
+```sh
+$ ./solana-accounts-proxy /path/to/ProxyConfig.toml/file
+```
+
+To run the server with logging enabled pass one of `debug`, `info`, `trace`, `error` logging flags to `RUST_LOG=[flag]`. Example to log the RPC server requests and database queries use:
+
+```sh
+$ RUST_LOG=debug ./solana-accounts-proxy /path/to/ProxyConfig.toml/file
+```
+
+
 
 ##### Making a request to this server
 The server only accepts `POST` requests and will only process supported RPC methods `getAccountInfo`, `getMultipleAccounts` and `getProgramAccounts`.
 The body must be valid JSON in the same format as JSON data sent to a Solana RPC node in the format
+
 ```json
 { 
     jsonrpc: String, 
@@ -72,10 +87,10 @@ To compile and run the crate
 $ cargo run --release -- /path/to/ProxyConfig.toml/file
 ```
 
-To compile and run the crate with logging enabled (suitable for debug builds)
+To compile and run the crate with logging enabled, pass one of the `debug`, `info`, `trace`, `error` log flags. An example to see the logging info of the RPC server and postgres queries, run:
 
 ```sh
-cargo run --release --features log_with_tracing -- /path/to/ProxyConfig.toml/file
+$ RUST_LOG=debug cargo run --release -- /path/to/ProxyConfig.toml/file
 ```
 
 ##### Extra compile time features
