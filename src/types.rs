@@ -114,7 +114,11 @@ impl Encoding {
 
                 Ok(base64::encode(&buffer))
             }
-            _ => panic!(), //TODO
+            Self::JsonParsed => {
+                let to_json: json::JsonValue = data.into();
+
+                Ok(to_json.to_string())
+            }
         }
     }
 
