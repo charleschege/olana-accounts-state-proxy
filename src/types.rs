@@ -1,5 +1,5 @@
 use core::fmt;
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use jsonrpsee::core::RpcResult;
 use serde::Deserialize;
 
 use crate::ErrorHandler;

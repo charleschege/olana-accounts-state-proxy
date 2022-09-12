@@ -109,7 +109,8 @@ impl PgConnection {
         if crate::CLIENT.read().await.is_none() {
             Err(ErrorHandler::new(
                 "Internal server error. The connection to the database does not exist.",
-            ))
+            )
+            .build())
         } else {
             Ok(())
         }
