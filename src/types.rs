@@ -97,6 +97,7 @@ impl Encoding {
     pub fn encode(&self, data: &[u8]) -> String {
         match self {
             Self::Base58 => bs58::encode(data).into_string(),
+            Self::Base64 => base64::encode(data),
             _ => panic!(), //TODO
         }
     }
