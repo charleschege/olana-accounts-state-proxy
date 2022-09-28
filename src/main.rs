@@ -102,7 +102,7 @@ mod correctness_tests {
         use std::process::Command;
 
         Command::new("./target/debug/solana-accounts-proxy")
-            .arg("./tests/config_file")
+            .arg("./tests/config_file/ProxyConfig.toml")
             .spawn()
             .unwrap();
 
@@ -114,7 +114,7 @@ mod correctness_tests {
               "JBu1AL4obBcCMqKBBxhpWCNUt136ijcuMZLFvTP7iWdB",
               json::object!{
                 "encoding": "base64",
-                "commitment": "finalized"
+                "commitment": "processed"
               }
             ]
         };

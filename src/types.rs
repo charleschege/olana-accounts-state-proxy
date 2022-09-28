@@ -123,7 +123,7 @@ impl Encoding {
     }
 
     /// Used to return the encoding type in the JSON response
-    pub fn into_string(&self) -> &str {
+    pub fn to_str(&self) -> &str {
         match self {
             Self::Base58 => "base58",
             Self::Base64 => "base64",

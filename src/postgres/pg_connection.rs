@@ -57,13 +57,10 @@ impl PgConnection {
             Some(db_error) => {
                 if let Some(severity) = db_error.parsed_severity() {
                     match severity {
-                        Severity::Info => {
+                        Severity::Info | Severity::Notice => {
                             tracing::info!("connection error: {}", error.to_string());
                         }
-                        Severity::Panic => {
-                            tracing::trace!("connection error: {}", error.to_string());
-                        }
-                        Severity::Fatal => {
+                        Severity::Panic | Severity::Fatal => {
                             tracing::trace!("connection error: {}", error.to_string());
                         }
                         Severity::Error => {
@@ -72,13 +69,7 @@ impl PgConnection {
                         Severity::Warning => {
                             tracing::warn!("connection error: {}", error.to_string());
                         }
-                        Severity::Notice => {
-                            tracing::info!("connection error: {}", error.to_string());
-                        }
-                        Severity::Debug => {
-                            tracing::debug!("connection error: {}", error.to_string());
-                        }
-                        Severity::Log => {
+                        Severity::Debug | Severity::Log => {
                             tracing::debug!("connection error: {}", error.to_string());
                         }
                     }

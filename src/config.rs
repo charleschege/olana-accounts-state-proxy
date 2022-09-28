@@ -5,7 +5,6 @@ use std::{
     fs::File,
     io::Read,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::PathBuf,
 };
 
 const ERROR_MESSAGE: &str = "Invalid Number of Command-line Arguments. Expected `2` arguments. 
@@ -15,7 +14,7 @@ const HELP_MESSAGE: [&str; 4] = [
     "solana-accounts-proxy",
     "\n",
     "   Example Usage:",
-    "       solana-accounts-proxy ../configs",
+    "       solana-accounts-proxy ../configs/proxy.toml",
 ];
 /// Reads the user configuration input from [stdin] and
 /// transforms the input to a [ProxyConfig]
@@ -62,10 +61,7 @@ pub struct ProxyConfig {
 impl ProxyConfig {
     // Load the configuration
     pub(crate) fn load_config(path: &str) -> anyhow::Result<Self> {
-        let mut path_to_conf: PathBuf = path.into();
-        path_to_conf.push("ProxyConfig.toml");
-
-        let mut file = File::open(&path_to_conf)?;
+        let mut file = File::open(&path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 

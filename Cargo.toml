@@ -23,7 +23,7 @@ jsonrpsee = { version = "0.15.1", features = [
 lazy_static = "1.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.144", features = ["derive"] }
-sql_query_builder = { version = "1.0.1", features = ["postgresql"] }
+serde_json = "1.0.85"
 tokio = { version = "1.20.1", features = ["full"] }
 tokio-postgres = "0.7.7"
 toml = "0.5.9"
