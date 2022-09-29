@@ -1,6 +1,6 @@
 use crate::{
-    Commitment, Encoding, GetAccountInfoQuery, GetAccountInfoRow, Parameters, PgConnection, PubKey,
-    RpcProxyServer, CLIENT,
+    Commitment, DataSlice, Encoding, Filter, GetAccountInfoQuery, GetAccountInfoRow, Parameters,
+    PgConnection, PubKey, RpcProxyServer, CLIENT,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -25,9 +25,17 @@ impl RpcProxyServer for RpcProxyImpl {
     async fn get_program_accounts(
         &self,
         base58_public_key: String,
-        _parameters: Option<Parameters>,
+        parameters: Option<Parameters>,
     ) -> RpcResult<serde_json::Value> {
         let _public_key = PubKey::parse(&base58_public_key)?;
+
+        if let Some(parameters) = parameters.as_ref() {
+            parameters.exceeds_filters_len()?;
+        }
+
+        dbg!(&parameters);
+
+        get_program_accounts(&base58_public_key, parameters).await;
 
         Ok("getProgramAccounts".into())
     }
@@ -47,7 +55,7 @@ impl RpcProxyServer for RpcProxyImpl {
     }
 }
 
-/// The SQL query to fetch account information from the data store
+/// The handler for `getAccountInfo` method
 pub async fn get_account_info(
     base58_public_key: &str,
     parameters: Option<&Parameters>,
@@ -82,4 +90,27 @@ pub async fn get_account_info(
             Ok(Some(query_result.into()))
         }
     }
+}
+
+/// Handler the for `getProgramAccounts`
+pub async fn get_program_accounts(base58_public_key: &str, parameters: Option<Parameters>) {
+    let mut data_slice = DataSlice::default();
+    let mut with_context = bool::default();
+    let mut filters = Vec::<Filter>::default();
+
+    if let Some(has_parameters) = parameters {
+        if let Some(inner_data_slice) = has_parameters.data_slice.as_ref() {
+            data_slice = *inner_data_slice;
+        }
+        if let Some(has_with_context) = has_parameters.with_context.as_ref() {
+            with_context = *has_with_context;
+        }
+        if let Some(has_filter) = has_parameters.filters {
+            filters = has_filter;
+        }
+    }
+
+    dbg!(&data_slice);
+    dbg!(&with_context);
+    dbg!(&filters);
 }

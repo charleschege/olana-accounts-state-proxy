@@ -30,3 +30,19 @@ impl From<&Row> for GetAccountInfoRow {
         }
     }
 }
+
+/// Enables easier serialization from a postgres `Row` from the `getAccountInfo` query
+#[derive(Debug)]
+pub struct GetProgramAccountsRow {
+    context: Context,
+    pubkey: String,
+    value: AccountInfo,
+}
+/*
+impl From<&Row> for GetProgramAccountsRow {
+    fn from(row: &Row) -> Self {
+        let slot: i64 = row.get(0);
+
+        GetProgramAccountsRow {}
+    }
+}*/

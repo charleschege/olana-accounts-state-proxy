@@ -65,6 +65,25 @@ pub struct Parameters {
     pub with_context: Option<bool>,
 }
 
+impl Parameters {
+    /// Checks whether the `filters` exceed the limit of 4
+    /// return `Ok(())` if doesn't exceed
+    pub fn exceeds_filters_len(&self) -> RpcResult<()> {
+        match self.filters.as_ref() {
+            None => (),
+            Some(filters) => {
+                if filters.len() > 4 {
+                    return Err(
+                        ErrorHandler::new("You can only use a maximum of 4 filters").build()
+                    );
+                }
+            }
+        };
+
+        Ok(())
+    }
+}
+
 /// Which format the proxy server should use when transmitting a response data to a client
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub enum Encoding {
@@ -122,6 +141,28 @@ impl Encoding {
         }
     }
 
+    /// Decode data from a method parameter,
+    /// `NOTE:` Only `base64` and `base58` formats, all other formats result in an RPC error.
+    pub fn decode(&self, data: &[u8]) -> RpcResult<Vec<u8>> {
+        match self {
+            Self::Base58 => match bs58::decode(data).into_vec() {
+                Ok(decoded_data) => Ok(decoded_data),
+                Err(error) => Err(ErrorHandler::new(&error.to_string()).build()),
+            },
+            Self::Base64 => match base64::decode(data) {
+                Ok(decoded_data) => Ok(decoded_data),
+                Err(error) => Err(ErrorHandler::new(&error.to_string()).build()),
+            },
+            _ => {
+                let mut to_rpc_error = "Unsupported data encoding format `".to_owned();
+                to_rpc_error.push_str(self.to_str());
+                to_rpc_error.push_str("` for the method.");
+
+                Err(ErrorHandler::new(&to_rpc_error).build())
+            }
+        }
+    }
+
     /// Used to return the encoding type in the JSON response
     pub fn to_str(&self) -> &str {
         match self {
@@ -168,7 +209,7 @@ impl Commitment {
 }
 
 /// Configures the offset and the length
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default, Copy, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DataSlice {
     /// Limits data to a particular offset
