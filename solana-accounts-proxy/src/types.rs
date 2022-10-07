@@ -149,10 +149,6 @@ impl Encoding {
                 Ok(decoded_data) => Ok(decoded_data),
                 Err(error) => Err(ErrorHandler::new(&error.to_string()).build()),
             },
-            Self::Base64 => match base64::decode(data) {
-                Ok(decoded_data) => Ok(decoded_data),
-                Err(error) => Err(ErrorHandler::new(&error.to_string()).build()),
-            },
             _ => {
                 let mut to_rpc_error = "Unsupported data encoding format `".to_owned();
                 to_rpc_error.push_str(self.to_str());

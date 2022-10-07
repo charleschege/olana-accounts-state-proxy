@@ -2,6 +2,7 @@
 pub struct GetAccountInfoQuery<'q> {
     base58_public_key: &'q str,
     commitment: &'q str,
+    min_context_slot: Option<u64>,
 }
 
 impl<'q> GetAccountInfoQuery<'q> {
@@ -10,19 +11,27 @@ impl<'q> GetAccountInfoQuery<'q> {
         GetAccountInfoQuery {
             base58_public_key: "",
             commitment: "",
+            min_context_slot: Option::None,
         }
     }
 
     /// Add a base58 public key
-    pub fn add_public_key(mut self, base58_public_key: &'q str) -> Self {
+    pub fn add_public_key(&mut self, base58_public_key: &'q str) -> &mut Self {
         self.base58_public_key = base58_public_key;
 
         self
     }
 
     /// Add the commitment level
-    pub fn add_commitment(mut self, commitment: &'q str) -> Self {
+    pub fn add_commitment(&mut self, commitment: &'q str) -> &mut Self {
         self.commitment = commitment;
+
+        self
+    }
+
+    /// Add the minimum context slot
+    pub fn add_min_context_slot(&mut self, min_context_slot: Option<u64>) -> &mut Self {
+        self.min_context_slot = min_context_slot;
 
         self
     }
@@ -42,6 +51,12 @@ impl<'q> GetAccountInfoQuery<'q> {
         FROM account_write WHERE pubkey = '",
         );
         query.push_str(self.base58_public_key);
+
+        if let Some(min_context_slot) = self.min_context_slot {
+            query.push_str("AND slot >= ");
+            query.push_str(&min_context_slot.to_string());
+        }
+
         query.push_str("';");
 
         query

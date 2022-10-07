@@ -20,6 +20,29 @@ pub struct AccountInfo {
 }
 
 impl AccountInfo {
+    /// (optional) dataSlice: <object> -
+    /// limit the returned account data using the provided offset: <usize> and length: <usize> fields;
+    /// only available for "base58", "base64" or "base64+zstd" encodings.
+    pub fn as_data_slice(&mut self, offset: usize, length: usize) -> &mut Self {
+        if offset == 0 && length == 0 {
+            return self;
+        }
+
+        if length == 0 {
+            let partial_data = self.data[offset..].to_vec();
+
+            self.data = partial_data;
+
+            self
+        } else {
+            let partial_data = self.data[offset..=length].to_vec(); //TODO test for accuracy if the range is inclusive or not
+
+            self.data = partial_data;
+
+            self
+        }
+    }
+
     /// Convert to JSON format
     pub fn as_json_value(
         &self,

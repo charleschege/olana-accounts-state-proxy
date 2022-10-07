@@ -63,10 +63,24 @@ pub async fn get_account_info(
     let commitment = Commitment::get_commitment(parameters);
     let encoding = Encoding::get_encoding(parameters);
 
-    let query = GetAccountInfoQuery::new()
+    let mut ga_query = GetAccountInfoQuery::new();
+    ga_query
         .add_public_key(base58_public_key)
-        .add_commitment(commitment)
-        .query();
+        .add_commitment(commitment);
+
+    let mut offset = 0usize;
+    let mut offset_length = 0usize;
+
+    if let Some(parameters_inner) = parameters {
+        ga_query.add_min_context_slot(parameters_inner.min_context_slot);
+
+        if let Some(data_slice_inner) = parameters_inner.data_slice {
+            offset = data_slice_inner.offset;
+            offset_length = data_slice_inner.length;
+        }
+    }
+
+    let query = ga_query.query();
 
     PgConnection::client_exists().await?;
     let guarded_pg_client = CLIENT.read().await;
@@ -80,7 +94,9 @@ pub async fn get_account_info(
     match rows.get(0) {
         None => Ok(None),
         Some(value) => {
-            let row: GetAccountInfoRow = value.into();
+            let mut row: GetAccountInfoRow = value.into();
+
+            row.value.as_data_slice(offset, offset_length);
 
             let mut query_result = Map::new();
 
