@@ -2,5 +2,6 @@
 members = [
     "solana-accounts-proxy-server",
     "solana-accounts-proxy",
-    "tests/accounts_proxy_tests"
+    "tests/accounts_proxy_tests",
+    "tests/testsuite",
 ]
