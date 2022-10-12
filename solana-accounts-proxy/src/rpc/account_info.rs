@@ -1,12 +1,21 @@
 use core::fmt;
 use jsonrpsee::core::RpcResult;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as JsonValue};
 
+/// AccountInfo which is just an [Account] with an additional field of `pubkey`
 /// Account information
-#[derive(Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountInfo {
+    pubkey: String,
+    account: Account,
+}
+
+/// An Account
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Account {
     /// The data specific to the account
     pub data: Vec<u8>,
     /// Is the account executable
@@ -19,7 +28,7 @@ pub struct AccountInfo {
     pub rent_epoch: i64,
 }
 
-impl AccountInfo {
+impl Account {
     /// (optional) dataSlice: <object> -
     /// limit the returned account data using the provided offset: <usize> and length: <usize> fields;
     /// only available for "base58", "base64" or "base64+zstd" encodings.
@@ -68,9 +77,9 @@ impl AccountInfo {
     }
 }
 
-impl fmt::Debug for AccountInfo {
+impl fmt::Debug for Account {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("AccountInfo")
+        f.debug_struct("Account")
             .field("owner", &self.owner)
             .field("lamports", &self.lamports)
             .field("executable", &self.executable)

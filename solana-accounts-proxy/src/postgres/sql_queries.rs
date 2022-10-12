@@ -73,6 +73,7 @@ impl<'q> Default for GetAccountInfoQuery<'q> {
 pub struct GetProgramAccounts<'q> {
     base58_public_key: &'q str,
     commitment: &'q str,
+    min_context_slot: u64,
 }
 
 impl<'q> GetProgramAccounts<'q> {
@@ -81,6 +82,7 @@ impl<'q> GetProgramAccounts<'q> {
         GetProgramAccounts {
             base58_public_key: "",
             commitment: "",
+            min_context_slot: u64::default(),
         }
     }
 
@@ -96,6 +98,39 @@ impl<'q> GetProgramAccounts<'q> {
         self.commitment = commitment;
 
         self
+    }
+
+    /// Add the minimum context slot
+    pub fn add_min_context_slot(&mut self, min_context_slot: Option<u64>) -> &mut Self {
+        self.min_context_slot = min_context_slot;
+
+        self
+    }
+
+    /// Build the SQL query
+    pub fn query(self) -> String {
+        let mut query = String::new();
+
+        query.push_str(
+            "SELECT 
+            account_write.slot,
+            account_write.data,
+            account_write.executable,
+            account_write.owner,
+            account_write.lamports,
+            account_write.rent_epoch
+        FROM account_write WHERE pubkey = '",
+        );
+        query.push_str(self.base58_public_key);
+
+        if let Some(min_context_slot) = self.min_context_slot {
+            query.push_str("AND slot >= ");
+            query.push_str(&min_context_slot.to_string());
+        }
+
+        query.push_str("';");
+
+        query
     }
 }
 
