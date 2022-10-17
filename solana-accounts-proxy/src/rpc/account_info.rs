@@ -12,6 +12,21 @@ pub struct AccountInfo {
     account: Account,
 }
 
+impl AccountInfo {
+    /// Convert the `AccountInfo` into a JSON value to pass to the
+    /// RPC response
+    pub fn as_json_value(
+        &self,
+        encoding: crate::Encoding,
+        map: &mut Map<String, JsonValue>,
+    ) -> RpcResult<()> {
+        self.account
+            .as_json_value_with_pubkey(&self.pubkey, encoding, map)?;
+
+        Ok(())
+    }
+}
+
 /// An Account
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +74,32 @@ impl Account {
         map: &mut Map<String, JsonValue>,
     ) -> RpcResult<()> {
         let mut json_result = Map::new();
+        json_result.insert(
+            "data".into(),
+            JsonValue::Array(vec![
+                encoding.encode(&self.data)?.into(),
+                encoding.to_str().into(),
+            ]),
+        );
+        json_result.insert("executable".into(), self.executable.into());
+        json_result.insert("lamports".into(), self.lamports.into());
+        json_result.insert("owner".into(), self.owner.clone().into());
+        json_result.insert("rentEpoch".into(), self.rent_epoch.into());
+
+        map.insert("value".to_owned(), json_result.into());
+
+        Ok(())
+    }
+
+    /// Convert to JSON format
+    pub fn as_json_value_with_pubkey(
+        &self,
+        pubkey: &str,
+        encoding: crate::Encoding,
+        map: &mut Map<String, JsonValue>,
+    ) -> RpcResult<()> {
+        let mut json_result = Map::new();
+        json_result.insert("pubkey".into(), pubkey.into());
         json_result.insert(
             "data".into(),
             JsonValue::Array(vec![

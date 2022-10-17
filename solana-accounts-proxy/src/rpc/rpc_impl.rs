@@ -94,13 +94,14 @@ pub async fn get_account_info(
     match rows.get(0) {
         None => Ok(None),
         Some(value) => {
-            let mut row: GetAccountInfoRow = value.into();
+            let row: GetAccountInfoRow = value.into();
 
-            row.value.as_data_slice(offset, offset_length);
+            //row.value.as_data_slice(offset, offset_length); //FIXME
 
             let mut query_result = Map::new();
 
             row.context.as_json_value(&mut query_result);
+
             row.value.as_json_value(encoding, &mut query_result)?;
 
             Ok(Some(query_result.into()))

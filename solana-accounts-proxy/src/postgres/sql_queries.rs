@@ -73,7 +73,7 @@ impl<'q> Default for GetAccountInfoQuery<'q> {
 pub struct GetProgramAccounts<'q> {
     base58_public_key: &'q str,
     commitment: &'q str,
-    min_context_slot: u64,
+    min_context_slot: Option<u64>,
 }
 
 impl<'q> GetProgramAccounts<'q> {
@@ -82,7 +82,7 @@ impl<'q> GetProgramAccounts<'q> {
         GetProgramAccounts {
             base58_public_key: "",
             commitment: "",
-            min_context_slot: u64::default(),
+            min_context_slot: Option::default(),
         }
     }
 

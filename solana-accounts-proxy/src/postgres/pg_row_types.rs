@@ -1,12 +1,12 @@
 use tokio_postgres::Row;
 
-use crate::{Account, AccountInfo, Context};
+use crate::{Account, Context};
 
 /// Enables easier serialization from a postgres `Row` from the `getAccountInfo` query
 #[derive(Debug)]
 pub struct GetAccountInfoRow {
     pub(crate) context: Context,
-    pub(crate) value: AccountInfo,
+    pub(crate) value: Account,
 }
 
 impl From<&Row> for GetAccountInfoRow {
@@ -62,7 +62,7 @@ impl GetProgramAccountsRow {
                 rent_epoch,
             };
 
-            row.push(account);
+            accounts.push(account);
         }
 
         accounts
