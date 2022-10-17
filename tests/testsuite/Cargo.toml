@@ -6,11 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-json                  = "0.12.4"
-minreq                = { version = "2.6.0", features = ["https-rustls"] }
-serde                 = { version = "1.0.145", features = ["derive"] }
-serde_json            = "1.0.86"
-tokio                 = { version = "1.21.2", features = ["full"] }
-solana-accounts-proxy = { path = "../../solana-accounts-proxy" }
+json = "0.12.4"
+minreq = { version = "2.6.0", features = ["https-rustls"] }
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.86"
+tokio = { version = "1.21.2", features = ["full"] }
+solana-accounts-proxy = { path = "../../solana-accounts-proxy", default-features = false, features = [
+    "dangerous_debug",
+] }
 toml = "0.5.9"
 anyhow = "1.0.65"

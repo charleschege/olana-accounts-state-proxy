@@ -29,7 +29,8 @@ async fn main() {
     dbg!(&gpa_tests.to_json_string());
     dbg!(&gpa_tests.to_json_string().len());
 
-    let config = load_config().await;
+    let config = TestsuiteConfig::load_config().await.unwrap();
 
-    gpa_tests.req_from_rpcpool(&config).await.unwrap();
+    let outcome = gpa_tests.req_from_rpcpool(&config).await.unwrap();
+    dbg!(&outcome);
 }

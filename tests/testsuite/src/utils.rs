@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::path::PathBuf;
 use tokio::{fs::File, io::AsyncReadExt};
 
 pub const CONTENT_TYPE: &str = "Content-Type";
@@ -6,8 +7,23 @@ pub const APPLICATION_JSON: &str = "application/json";
 pub const ARGS_ERROR: &str = "The program takes only one argument which is the path to the location of the configuration file.";
 
 #[derive(Debug, Deserialize)]
+pub struct GpaParameters {
+    pubkey: String,
+    parameters: Vec<Parameters>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Parameters {
+    data_slice: u64,
+    offset: usize,
+    bytes: String,
+    encoding: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct TestsuiteConfig {
     rpcpool_url: String,
+    data: Vec<GpaParameters>,
 }
 
 impl TestsuiteConfig {

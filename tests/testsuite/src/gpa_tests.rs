@@ -81,7 +81,10 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         .to_string()
     }
 
-    pub async fn req_from_rpcpool(&self, config: &TestsuiteConfig) -> anyhow::Result<()> {
+    pub async fn req_from_rpcpool(
+        &self,
+        config: &TestsuiteConfig,
+    ) -> anyhow::Result<RpcResult<Vec<RpcAccountInfo>>> {
         let mainnet_url = config.url().clone();
 
         let response = minreq::post(mainnet_url)
@@ -89,12 +92,9 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             .with_body(self.to_json_string())
             .send()?;
 
-        let rpc_result =
-            serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(&response.as_str()?)?;
-
-        dbg!(&rpc_result);
-
-        Ok(())
+        Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
+            &response.as_str()?,
+        )?)
     }
 
     pub fn req_from_proxy() {}
