@@ -7,11 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.65"
-solana-accounts-proxy = { path = "../solana-accounts-proxy", default-features = false, optional = true}
+solana-accounts-proxy = { path = "../solana-accounts-proxy"}
 tokio = { version = "1.21.2", features = ["full"] }
 tracing = { version = "0.1.36", features = ["async-await"] }
 
-[features]
-default = ["safe_debug"]
-dangerous_debug = ["solana-accounts-proxy/dangerous_debug"]
-safe_debug = ["solana-accounts-proxy/safe_debug"]

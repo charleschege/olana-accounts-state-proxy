@@ -60,28 +60,10 @@ pub struct Parameters {
     /// The minimum slot the request can be evaluated at
     pub min_context_slot: Option<u64>,
     /// Filters to use on the results
-    pub filters: Option<Vec<Filter>>,
+    //pub filters: Option<Vec<Filter>>,
+    pub filters: Option<(DataSize, MemCmp)>,
     /// wrap the result in an RpcResponse JSON object.
     pub with_context: Option<bool>,
-}
-
-impl Parameters {
-    /// Checks whether the `filters` exceed the limit of 4
-    /// return `Ok(())` if doesn't exceed
-    pub fn exceeds_filters_len(&self) -> RpcResult<()> {
-        match self.filters.as_ref() {
-            None => (),
-            Some(filters) => {
-                if filters.len() > 4 {
-                    return Err(
-                        ErrorHandler::new("You can only use a maximum of 4 filters").build()
-                    );
-                }
-            }
-        };
-
-        Ok(())
-    }
 }
 
 /// Which format the proxy server should use when transmitting a response data to a client
@@ -214,26 +196,32 @@ pub struct DataSlice {
     pub length: usize,
 }
 
-/// filter results using up to 4 filter objects;
-/// account must meet all filter criteria to be included in results
-#[derive(Debug, Deserialize)]
+/// compares the program account data length with the provided data size
+#[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct Filter {
-    /// compares a provided series of bytes with program account data at a particular offset.
-    pub memcmp: MemCmp,
-    /// compares the program account data length with the provided data size
+pub struct DataSize {
+    /// Length to compare
     pub data_size: u64,
 }
 
-///  Used to compare a provided series of bytes with program account data at a particular offset.
-#[derive(Debug, Deserialize)]
+///  Used to compare a provided series of bytes with program account data
+/// at a particular offset.
+#[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MemCmp {
+    /// The data to use for the comparison operation
+    pub memcmp: MemCmpData,
+}
+
+///  The comparison data of [MemCmp]
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct MemCmpData {
     /// offset into program account data to start comparison
     pub offset: usize,
     /// data to match, as encoded string
     pub bytes: String,
     /// encoding for filter bytes data, either "base58" or "base64".
     /// Data is limited in size to 128 or fewer decoded bytes.
-    pub encoding: Encoding,
+    pub encoding: Option<Encoding>,
 }

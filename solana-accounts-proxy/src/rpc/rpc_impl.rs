@@ -1,6 +1,6 @@
 use crate::{
-    Commitment, DataSlice, Encoding, Filter, GetAccountInfoQuery, GetAccountInfoRow, Parameters,
-    PgConnection, PubKey, RpcProxyServer, CLIENT,
+    Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetAccountInfoRow, MemCmp,
+    Parameters, PgConnection, PubKey, RpcProxyServer, CLIENT,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -28,12 +28,6 @@ impl RpcProxyServer for RpcProxyImpl {
         parameters: Option<Parameters>,
     ) -> RpcResult<serde_json::Value> {
         let _public_key = PubKey::parse(&base58_public_key)?;
-
-        if let Some(parameters) = parameters.as_ref() {
-            parameters.exceeds_filters_len()?;
-        }
-
-        dbg!(&parameters);
 
         get_program_accounts(&base58_public_key, parameters).await;
 
@@ -113,7 +107,7 @@ pub async fn get_account_info(
 pub async fn get_program_accounts(base58_public_key: &str, parameters: Option<Parameters>) {
     let mut data_slice = DataSlice::default();
     let mut with_context = bool::default();
-    let mut filters = Vec::<Filter>::default();
+    let mut filters = (DataSize::default(), MemCmp::default());
 
     if let Some(has_parameters) = parameters {
         if let Some(inner_data_slice) = has_parameters.data_slice.as_ref() {

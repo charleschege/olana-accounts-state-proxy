@@ -147,7 +147,6 @@ impl PostgresConfig {
     }
 }
 
-#[cfg(feature = "safe_debug")]
 impl fmt::Debug for PostgresConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PostgresConfig")
@@ -157,30 +156,6 @@ impl fmt::Debug for PostgresConfig {
                     &Some(&"REDACTED[POSTGRES_PASSWORD]")
                 } else {
                     &Option::<String>::None
-                }
-            })
-            .field("dbname", &self.dbname)
-            .field("host", &self.host)
-            .field("port", &self.port)
-            .field("options", &self.options)
-            .field("application_name", &self.application_name)
-            .field("connect_timeout", &self.connect_timeout)
-            .finish()
-    }
-}
-
-#[cfg(feature = "dangerous_debug")]
-impl fmt::Debug for PostgresConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use secrecy::ExposeSecret;
-
-        f.debug_struct("PostgresConfig")
-            .field("user", &self.user.expose_secret())
-            .field("password", &{
-                if let Some(password) = &self.password {
-                    Some(password.expose_secret())
-                } else {
-                    Option::<&String>::None
                 }
             })
             .field("dbname", &self.dbname)
