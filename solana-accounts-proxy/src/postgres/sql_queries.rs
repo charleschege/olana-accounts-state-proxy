@@ -1,5 +1,7 @@
 use postgres_query::query;
 
+use crate::Commitment;
+
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {
     base58_public_key: &'q str,
@@ -40,7 +42,7 @@ impl<'q> GetAccountInfoQuery<'q> {
 
     /// Build the SQL query
     pub fn query(self) -> String {
-        let mut query = String::new();
+        let mut query = String::new(); //FIXME switch to using `postgres-query`
 
         query.push_str(
             "SELECT 
@@ -103,7 +105,7 @@ impl<'q> GetProgramAccounts<'q> {
     }
 
     /// Add the minimum context slot
-    pub fn add_min_context_slot(&mut self, min_context_slot: Option<u64>) -> &mut Self {
+    pub fn add_min_context_slot(mut self, min_context_slot: Option<u64>) -> Self {
         self.min_context_slot = min_context_slot;
 
         self
@@ -111,44 +113,37 @@ impl<'q> GetProgramAccounts<'q> {
 
     /// Build the SQL query
     pub fn query(self) -> String {
-        let mut string_query = String::new();
-        let commitment = self.commitment;
+        let commitment: Commitment = self.commitment.into();
+        let commitment = commitment.queryable();
         let owner = self.base58_public_key;
 
         if let Some(min_context_slot) = self.min_context_slot {
             let slot = min_context_slot as i64;
 
-            let query = query!(
+            //FIXME Switch to `postgres_query::Query` using `query!()` macro
+            format!(
                 "
                 SELECT DISTINCT on(account_write.pubkey) account_write.* FROM account_write
                 WHERE
-                    slot >= (SELECT MIN($slot) FROM slot WHERE slot.status = '$commitment')
-                AND owner = '$owner'
+                    slot >= (SELECT MIN({}) FROM slot WHERE slot.status::VARCHAR = '{}')
+                AND owner = '{}'
                 ORDER BY account_write.pubkey, account_write.slot;
                 ",
-                slot,
-                commitment,
-                owner
-            );
-
-            string_query.push_str(query.sql());
+                slot, commitment, owner
+            )
         } else {
-            let query = query!(
+            //FIXME Switch to `postgres_query::Query` using `query!()` macro
+            format!(
                 "
             SELECT DISTINCT on(account_write.pubkey) account_write.* FROM account_write
                 WHERE
-                    slot <= (SELECT MAX(slot) FROM slot WHERE slot.status = '$commitment')
-                AND owner = '$owner'
+                    slot <= (SELECT MAX(slot) FROM slot WHERE slot.status::VARCHAR = '{}')
+                AND owner = '{}'
                 ORDER BY account_write.pubkey, account_write.slot;
                 ",
-                commitment,
-                owner
-            );
-
-            string_query.push_str(query.sql());
+                commitment, owner
+            )
         }
-
-        string_query
     }
 }
 

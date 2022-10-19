@@ -1,6 +1,6 @@
 use crate::{
-    Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetAccountInfoRow, MemCmp,
-    Parameters, PgConnection, PubKey, RpcProxyServer, CLIENT,
+    Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetAccountInfoRow,
+    GetProgramAccounts, MemCmp, Parameters, PgConnection, PubKey, RpcProxyServer, CLIENT,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -29,9 +29,9 @@ impl RpcProxyServer for RpcProxyImpl {
     ) -> RpcResult<serde_json::Value> {
         let _public_key = PubKey::parse(&base58_public_key)?;
 
-        get_program_accounts(&base58_public_key, parameters).await;
-
-        Ok("getProgramAccounts".into())
+        Ok(get_program_accounts(&base58_public_key, parameters)
+            .await?
+            .into())
     }
 
     async fn get_multiple_accounts(
@@ -104,10 +104,15 @@ pub async fn get_account_info(
 }
 
 /// Handler the for `getProgramAccounts`
-pub async fn get_program_accounts(base58_public_key: &str, parameters: Option<Parameters>) {
+pub async fn get_program_accounts(
+    base58_public_key: &str,
+    parameters: Option<Parameters>,
+) -> RpcResult<Option<JsonValue>> {
     let mut data_slice = DataSlice::default();
     let mut with_context = bool::default();
     let mut filters = (DataSize::default(), MemCmp::default());
+    let mut commitment = Commitment::Finalized;
+    let mut min_context_slot: Option<u64> = Option::None;
 
     if let Some(has_parameters) = parameters {
         if let Some(inner_data_slice) = has_parameters.data_slice.as_ref() {
@@ -119,9 +124,35 @@ pub async fn get_program_accounts(base58_public_key: &str, parameters: Option<Pa
         if let Some(has_filter) = has_parameters.filters {
             filters = has_filter;
         }
+
+        if let Some(req_commitment) = has_parameters.commitment {
+            commitment = req_commitment;
+        }
+
+        min_context_slot = has_parameters.min_context_slot;
     }
 
     dbg!(&data_slice);
     dbg!(&with_context);
     dbg!(&filters);
+
+    let gpa = GetProgramAccounts::new()
+        .add_public_key(base58_public_key)
+        .add_commitment(commitment.queryable())
+        .add_min_context_slot(min_context_slot);
+
+    let query = gpa.query();
+
+    PgConnection::client_exists().await?;
+    let guarded_pg_client = CLIENT.read().await;
+    let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
+
+    let rows = match pg_client.query(&query, &[]).await {
+        Ok(value) => value,
+        Err(error) => return Err(PgConnection::error_handler(&error)),
+    };
+
+    dbg!(&rows);
+
+    Ok(Option::None)
 }

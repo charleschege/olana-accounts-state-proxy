@@ -155,6 +155,7 @@ impl Encoding {
 /// Whether a block has been confirmed, is being processed or has been finalized
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
+#[derive(postgres_types::ToSql)]
 pub enum Commitment {
     /// A block has been processed by the RPC node
     Processed,
@@ -182,6 +183,16 @@ impl Commitment {
             }
         } else {
             Commitment::Finalized.queryable()
+        }
+    }
+}
+
+impl From<&str> for Commitment {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "confirmed" => Self::Confirmed,
+            "processed" => Self::Processed,
+            _ => Self::Finalized,
         }
     }
 }
