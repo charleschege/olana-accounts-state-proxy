@@ -137,11 +137,15 @@ impl PostgresConfig {
 
         let mut url = "postgres://".to_owned();
         url.push_str(self.user.expose_secret());
-        url.push_str(&password);
+        if !password.is_empty() {
+            url.push_str(&password);
+        }
         url.push('@');
         url.push_str(&self.host);
         url.push('/');
         url.push_str(&self.dbname);
+
+        dbg!(&url);
 
         url
     }
