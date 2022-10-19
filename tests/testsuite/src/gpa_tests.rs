@@ -1,7 +1,8 @@
 use crate::{TestsuiteConfig, APPLICATION_JSON, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use solana_accounts_proxy::{AccountInfo, Context, RpcResult, RpcResultData};
-use std::borrow::Cow;
+use solana_accounts_proxy::{AccountInfo, Context, ProxyConfig, RpcResult, RpcResultData};
+use std::{borrow::Cow, path::Path};
+use tokio::{fs::File, io::AsyncReadExt};
 
 #[derive(Debug)]
 pub struct GetProgramAccountsTests<'gpa> {
@@ -97,7 +98,37 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         )?)
     }
 
-    pub fn req_from_proxy() {}
+    pub async fn req_from_proxy(
+        &self,
+        proxy_config_file: &Path,
+    ) -> anyhow::Result<RpcResult<Vec<RpcAccountInfo>>> {
+        let mut file = File::open(proxy_config_file).await?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await?;
+
+        let config = toml::from_str::<ProxyConfig>(&contents)?;
+
+        dbg!(&config);
+
+        let mut proxy_url = String::new();
+        proxy_url.push_str("http://");
+        proxy_url.push_str(config.get_socketaddr().to_string().as_str());
+
+        println!("--------------------------");
+        dbg!(&self.to_json_string());
+        println!("--------------------------");
+
+        let response = minreq::post(proxy_url)
+            .with_header(CONTENT_TYPE, APPLICATION_JSON)
+            .with_body(self.to_json_string())
+            .send()?;
+
+        dbg!(&response.as_str());
+
+        Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
+            &response.as_str()?,
+        )?)
+    }
 }
 
 /// AccountInfo which is just an [Account] with an additional field of `pubkey`

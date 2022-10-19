@@ -59,7 +59,9 @@ impl TestsuiteConfig {
     }
 }
 
-pub async fn load_binary() -> anyhow::Result<()> {
+/// Return a [Result] containing the path to the configuration
+/// file of the proxy server
+pub async fn load_binary() -> anyhow::Result<PathBuf> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     #[derive(Debug, serde::Deserialize)]
@@ -70,17 +72,15 @@ pub async fn load_binary() -> anyhow::Result<()> {
         .arg("metadata")
         .arg("--format-version=1")
         .current_dir(manifest_dir)
-        .output()
-        .unwrap();
+        .output()?;
 
-    let manifest: Manifest = serde_json::from_slice(&output.stdout).unwrap();
+    let manifest: Manifest = serde_json::from_slice(&output.stdout)?;
     let mut binary = PathBuf::new();
     binary.push(&manifest.workspace_root);
 
     let mut proxy_config_file = PathBuf::new();
     proxy_config_file.push(&manifest.workspace_root);
     proxy_config_file.push("tests/config_file/ProxyConfig.toml");
-    dbg!(&proxy_config_file);
 
     #[cfg(debug_assertions)]
     binary.push("target/debug/solana-accounts-proxy-server");
@@ -90,9 +90,8 @@ pub async fn load_binary() -> anyhow::Result<()> {
     dbg!(&binary);
 
     std::process::Command::new(binary)
-        .arg(proxy_config_file)
-        .spawn()
-        .unwrap();
+        .arg(proxy_config_file.clone())
+        .spawn()?;
 
-    Ok(())
+    Ok(proxy_config_file)
 }

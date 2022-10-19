@@ -10,7 +10,7 @@ pub use utils::*;
 
 #[tokio::main]
 async fn main() {
-    load_binary().await.unwrap();
+    let proxy_config_path = load_binary().await.unwrap();
 
     let program_id = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
     let offset_public_key = "CyZuD7RPDcrqCGbNvLCyqk6Py9cEZTKmNKujfPi3ynDd";
@@ -31,6 +31,8 @@ async fn main() {
 
     let config = TestsuiteConfig::load_config().await.unwrap();
 
-    let outcome = gpa_tests.req_from_rpcpool(&config).await.unwrap();
-    dbg!(&outcome);
+    //let outcome = gpa_tests.req_from_rpcpool(&config).await.unwrap();
+    //dbg!(&outcome);
+
+    dbg!(&gpa_tests.req_from_proxy(&proxy_config_path).await.unwrap());
 }

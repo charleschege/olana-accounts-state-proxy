@@ -1,13 +1,13 @@
 [socket]
-ip   = "127.0.0.1"
+ip   = "0.0.0.0"
 port = 4000
 
 [postgres]
-user     = "solana"
-dbname   = "solana"
+user     = "postgres"
+dbname   = "new_schema"
 host     = "localhost"
-password = "solana"    # Optional field
+password = ""           # Optional field
 # options =  "foobar" # Optional field
 # application_name =  "foobar"  # Optional field
-port = 5433 # Optional field
+port = 5432 # Optional field
 # connect_timeout =  120  # Optional field
