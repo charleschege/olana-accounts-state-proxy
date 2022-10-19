@@ -1,3 +1,5 @@
+use postgres_query::query;
+
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {
     base58_public_key: &'q str,
@@ -109,28 +111,44 @@ impl<'q> GetProgramAccounts<'q> {
 
     /// Build the SQL query
     pub fn query(self) -> String {
-        let mut query = String::new();
-
-        query.push_str(
-            "SELECT 
-            account_write.slot,
-            account_write.data,
-            account_write.executable,
-            account_write.owner,
-            account_write.lamports,
-            account_write.rent_epoch
-        FROM account_write WHERE pubkey = '",
-        );
-        query.push_str(self.base58_public_key);
+        let mut string_query = String::new();
+        let commitment = self.commitment;
+        let owner = self.base58_public_key;
 
         if let Some(min_context_slot) = self.min_context_slot {
-            query.push_str("AND slot >= ");
-            query.push_str(&min_context_slot.to_string());
+            let slot = min_context_slot as i64;
+
+            let query = query!(
+                "
+                SELECT DISTINCT on(account_write.pubkey) account_write.* FROM account_write
+                WHERE
+                    slot >= (SELECT MIN($slot) FROM slot WHERE slot.status = '$commitment')
+                AND owner = '$owner'
+                ORDER BY account_write.pubkey, account_write.slot;
+                ",
+                slot,
+                commitment,
+                owner
+            );
+
+            string_query.push_str(query.sql());
+        } else {
+            let query = query!(
+                "
+            SELECT DISTINCT on(account_write.pubkey) account_write.* FROM account_write
+                WHERE
+                    slot <= (SELECT MAX(slot) FROM slot WHERE slot.status = '$commitment')
+                AND owner = '$owner'
+                ORDER BY account_write.pubkey, account_write.slot;
+                ",
+                commitment,
+                owner
+            );
+
+            string_query.push_str(query.sql());
         }
 
-        query.push_str("';");
-
-        query
+        string_query
     }
 }
 
