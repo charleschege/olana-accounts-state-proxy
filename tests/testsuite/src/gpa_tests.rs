@@ -94,7 +94,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             .send()?;
 
         Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
-            &response.as_str()?,
+            response.as_str()?,
         )?)
     }
 
@@ -114,10 +114,6 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         proxy_url.push_str("http://");
         proxy_url.push_str(config.get_socketaddr().to_string().as_str());
 
-        println!("--------------------------");
-        dbg!(&self.to_json_string());
-        println!("--------------------------");
-
         let response = minreq::post(proxy_url)
             .with_header(CONTENT_TYPE, APPLICATION_JSON)
             .with_body(self.to_json_string())
@@ -126,14 +122,14 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         dbg!(&response.as_str());
 
         Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
-            &response.as_str()?,
+            response.as_str()?,
         )?)
     }
 }
 
 /// AccountInfo which is just an [Account] with an additional field of `pubkey`
 /// Account information
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccountInfo {
     pubkey: String,
@@ -141,7 +137,7 @@ pub struct RpcAccountInfo {
 }
 
 /// An Account
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccount {
     /// The data specific to the account in the specified encoding format `(data, encoding_format)`

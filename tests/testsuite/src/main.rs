@@ -31,8 +31,8 @@ async fn main() {
 
     let config = TestsuiteConfig::load_config().await.unwrap();
 
-    //let outcome = gpa_tests.req_from_rpcpool(&config).await.unwrap();
-    //dbg!(&outcome);
+    let rpcpool_outcome = gpa_tests.req_from_rpcpool(&config).await.unwrap();
+    let proxy_outcome = gpa_tests.req_from_proxy(&proxy_config_path).await.unwrap();
 
-    dbg!(&gpa_tests.req_from_proxy(&proxy_config_path).await.unwrap());
+    assert_eq!(rpcpool_outcome, proxy_outcome,);
 }

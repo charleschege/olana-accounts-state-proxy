@@ -25,7 +25,7 @@ impl Context {
 }
 
 /// The result of a n RPC request
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct RpcResult<T> {
     jsonrpc: String,
     id: u8,
