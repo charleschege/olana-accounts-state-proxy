@@ -127,7 +127,7 @@ impl<'q> GetProgramAccounts<'q> {
                 WHERE
                     slot >= (SELECT MIN({}) FROM slot WHERE slot.status::VARCHAR = '{}')
                 AND owner = '{}'
-                ORDER BY account_write.pubkey, account_write.slot LIMIT 500;
+                ORDER BY account_write.pubkey, account_write.slot;
                 ",
                 slot, commitment, owner
             )
@@ -142,7 +142,7 @@ impl<'q> GetProgramAccounts<'q> {
                 WHERE
                     slot <= (SELECT MAX(slot) FROM slot WHERE slot.status::VARCHAR = '{}')
                 AND owner = '{}'
-                ORDER BY account_write.pubkey, account_write.slot LIMIT 5;
+                ORDER BY account_write.pubkey, account_write.slot;
                 ",
                 commitment, owner
             )
