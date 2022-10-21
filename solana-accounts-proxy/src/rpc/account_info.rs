@@ -1,29 +1,29 @@
 use core::fmt;
 use jsonrpsee::core::RpcResult;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value as JsonValue};
+use serde_json::{Map, Value as SerdeJsonValue};
 
 /// AccountInfo which is just an [Account] with an additional field of `pubkey`
 /// Account information
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountInfo {
-    pubkey: String,
-    account: Account,
+    /// The public key of the account
+    pub pubkey: String,
+    /// An [Account]
+    pub account: Account,
 }
 
 impl AccountInfo {
     /// Convert the `AccountInfo` into a JSON value to pass to the
     /// RPC response
-    pub fn as_json_value(
-        &self,
-        encoding: crate::Encoding,
-        map: &mut Map<String, JsonValue>,
-    ) -> RpcResult<()> {
-        self.account
-            .as_json_value_with_pubkey(&self.pubkey, encoding, map)?;
+    pub fn as_json_value(&self, encoding: crate::Encoding) -> RpcResult<SerdeJsonValue> {
+        let account = self.account.as_json_value(encoding)?;
+        let mut map = Map::new();
+        map.insert("pubkey".to_owned(), self.pubkey.as_str().into());
+        map.insert("account".to_owned(), account.into());
 
-        Ok(())
+        Ok(map.into())
     }
 }
 
@@ -71,12 +71,11 @@ impl Account {
     pub fn as_json_value(
         &self,
         encoding: crate::Encoding,
-        map: &mut Map<String, JsonValue>,
-    ) -> RpcResult<()> {
+    ) -> RpcResult<Map<String, SerdeJsonValue>> {
         let mut json_result = Map::new();
         json_result.insert(
             "data".into(),
-            JsonValue::Array(vec![
+            SerdeJsonValue::Array(vec![
                 encoding.encode(&self.data)?.into(),
                 encoding.to_str().into(),
             ]),
@@ -86,35 +85,7 @@ impl Account {
         json_result.insert("owner".into(), self.owner.clone().into());
         json_result.insert("rentEpoch".into(), self.rent_epoch.into());
 
-        map.insert("value".to_owned(), json_result.into());
-
-        Ok(())
-    }
-
-    /// Convert to JSON format
-    pub fn as_json_value_with_pubkey(
-        &self,
-        pubkey: &str,
-        encoding: crate::Encoding,
-        map: &mut Map<String, JsonValue>,
-    ) -> RpcResult<()> {
-        let mut json_result = Map::new();
-        json_result.insert("pubkey".into(), pubkey.into());
-        json_result.insert(
-            "data".into(),
-            JsonValue::Array(vec![
-                encoding.encode(&self.data)?.into(),
-                encoding.to_str().into(),
-            ]),
-        );
-        json_result.insert("executable".into(), self.executable.into());
-        json_result.insert("lamports".into(), self.lamports.into());
-        json_result.insert("owner".into(), self.owner.clone().into());
-        json_result.insert("rentEpoch".into(), self.rent_epoch.into());
-
-        map.insert("value".to_owned(), json_result.into());
-
-        Ok(())
+        Ok(json_result)
     }
 }
 

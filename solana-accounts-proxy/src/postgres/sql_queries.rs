@@ -1,5 +1,3 @@
-use postgres_query::query;
-
 use crate::Commitment;
 
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
@@ -123,23 +121,28 @@ impl<'q> GetProgramAccounts<'q> {
             //FIXME Switch to `postgres_query::Query` using `query!()` macro
             format!(
                 "
-                SELECT DISTINCT on(account_write.pubkey) account_write.* FROM account_write
+                SELECT DISTINCT on(account_write.pubkey) 
+                    account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
+                FROM account_write
                 WHERE
                     slot >= (SELECT MIN({}) FROM slot WHERE slot.status::VARCHAR = '{}')
                 AND owner = '{}'
-                ORDER BY account_write.pubkey, account_write.slot;
+                ORDER BY account_write.pubkey, account_write.slot LIMIT 500;
                 ",
                 slot, commitment, owner
             )
         } else {
             //FIXME Switch to `postgres_query::Query` using `query!()` macro
+
             format!(
                 "
-            SELECT DISTINCT on(account_write.pubkey) account_write.* FROM account_write
+            SELECT DISTINCT on(account_write.pubkey) 
+            account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
+            FROM account_write
                 WHERE
                     slot <= (SELECT MAX(slot) FROM slot WHERE slot.status::VARCHAR = '{}')
                 AND owner = '{}'
-                ORDER BY account_write.pubkey, account_write.slot;
+                ORDER BY account_write.pubkey, account_write.slot LIMIT 5;
                 ",
                 commitment, owner
             )

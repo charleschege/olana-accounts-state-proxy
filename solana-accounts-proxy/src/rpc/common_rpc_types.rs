@@ -18,11 +18,8 @@ impl Context {
         let mut slot = Map::new();
         slot.insert("slot".into(), self.slot.into());
 
-        match self.api_version.as_ref() {
-            Some(api_version) => {
-                map.insert("apiVersion".into(), api_version.as_str().into());
-            }
-            None => (),
+        if let Some(api_version) = self.api_version.as_ref() {
+            map.insert("apiVersion".into(), api_version.as_str().into());
         }
     }
 }

@@ -1,6 +1,7 @@
 use crate::{
     Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetAccountInfoRow,
-    GetProgramAccounts, MemCmp, Parameters, PgConnection, PubKey, RpcProxyServer, CLIENT,
+    GetProgramAccounts, GetProgramAccountsRow, MemCmp, Parameters, PgConnection, PubKey,
+    RpcProxyServer, CLIENT,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -96,7 +97,7 @@ pub async fn get_account_info(
 
             row.context.as_json_value(&mut query_result);
 
-            row.value.as_json_value(encoding, &mut query_result)?;
+            row.value.as_json_value(encoding)?;
 
             Ok(Some(query_result.into()))
         }
@@ -113,6 +114,7 @@ pub async fn get_program_accounts(
     let mut filters = (DataSize::default(), MemCmp::default());
     let mut commitment = Commitment::Finalized;
     let mut min_context_slot: Option<u64> = Option::None;
+    let encoding = Encoding::get_encoding(parameters.as_ref());
 
     if let Some(has_parameters) = parameters {
         if let Some(inner_data_slice) = has_parameters.data_slice.as_ref() {
@@ -132,10 +134,6 @@ pub async fn get_program_accounts(
         min_context_slot = has_parameters.min_context_slot;
     }
 
-    dbg!(&data_slice);
-    dbg!(&with_context);
-    dbg!(&filters);
-
     let gpa = GetProgramAccounts::new()
         .add_public_key(base58_public_key)
         .add_commitment(commitment.queryable())
@@ -152,7 +150,11 @@ pub async fn get_program_accounts(
         Err(error) => return Err(PgConnection::error_handler(&error)),
     };
 
-    dbg!(&rows);
+    let outcome = GetProgramAccountsRow::from_row(rows, encoding)?;
 
-    Ok(Option::None)
+    if outcome.is_empty() {
+        Ok(Option::None)
+    } else {
+        Ok(Some(outcome.into()))
+    }
 }
