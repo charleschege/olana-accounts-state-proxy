@@ -27,9 +27,12 @@ impl Context {
 /// The result of a n RPC request
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct RpcResult<T> {
-    jsonrpc: String,
-    id: u8,
-    result: T,
+    /// The JSON version
+    pub jsonrpc: String,
+    /// The ID
+    pub id: u8,
+    /// The result of the response
+    pub result: T,
 }
 
 impl<T> RpcResult<T> where T: serde::de::DeserializeOwned + std::fmt::Debug {}

@@ -132,8 +132,8 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccountInfo {
-    pubkey: String,
-    account: RpcAccount,
+    pub pubkey: String,
+    pub account: RpcAccount,
 }
 
 /// An Account
