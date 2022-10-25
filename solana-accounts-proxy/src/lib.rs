@@ -21,6 +21,9 @@ pub use postgres::*;
 mod config;
 pub use config::*;
 
+mod errors;
+pub use errors::*;
+
 lazy_static! {
     /// Reads the user configuration and stores it in a global static variable
     pub static ref USER_CONFIG: ProxyConfig = load_user_config();

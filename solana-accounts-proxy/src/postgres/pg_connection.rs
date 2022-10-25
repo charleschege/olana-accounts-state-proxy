@@ -1,5 +1,5 @@
-use crate::{config::PostgresConfig, ErrorHandler};
-use jsonrpsee::core::{Error as JsonrpseeError, RpcResult};
+use crate::{config::PostgresConfig, ProxyError, ProxyResult};
+use jsonrpsee::core::Error as JsonrpseeError;
 use std::time::Duration;
 use tokio_postgres::{error::Severity, Client, Config, NoTls};
 
@@ -80,10 +80,7 @@ impl PgConnection {
             None => PgConnection::unresolved_error(error),
         }
 
-        ErrorHandler::new(
-            "An internal server error occurred. Contact administrator or check the server logs.",
-        )
-        .build()
+        JsonrpseeError::Custom(crate::INTERNAL_SERVER_ERROR.to_owned())
     }
 
     /// Errors cannot be converted to [Severity]
@@ -96,12 +93,11 @@ impl PgConnection {
     }
 
     /// Handles a HTTP response when the static variable [crate::CLIENT] is [Option::None]
-    pub async fn client_exists() -> RpcResult<()> {
+    pub async fn client_exists() -> ProxyResult<()> {
         if crate::CLIENT.read().await.is_none() {
-            Err(ErrorHandler::new(
-                "Internal server error. The connection to the database does not exist.",
-            )
-            .build())
+            Err(ProxyError::Client(
+                "Internal server error. The connection to the database does not exist.".to_owned(),
+            ))
         } else {
             Ok(())
         }

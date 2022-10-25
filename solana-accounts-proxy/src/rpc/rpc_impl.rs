@@ -1,7 +1,6 @@
 use crate::{
-    Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetAccountInfoRow,
-    GetProgramAccounts, GetProgramAccountsRow, MemCmp, Parameters, PgConnection, PubKey,
-    RpcProxyServer, CLIENT,
+    Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetProgramAccounts,
+    GetProgramAccountsRow, MemCmp, Parameters, PubKey, RpcProxyServer,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -75,33 +74,15 @@ pub async fn get_account_info(
         }
     }
 
-    let query = ga_query.query();
+    let row = ga_query.query().await?;
 
-    PgConnection::client_exists().await?;
-    let guarded_pg_client = CLIENT.read().await;
-    let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
+    let mut query_result = Map::new();
 
-    let rows = match pg_client.query(&query, &[]).await {
-        Ok(value) => value,
-        Err(error) => return Err(PgConnection::error_handler(&error)),
-    };
+    row.context.as_json_value(&mut query_result);
 
-    match rows.get(0) {
-        None => Ok(None),
-        Some(value) => {
-            let row: GetAccountInfoRow = value.into();
+    row.value.as_json_value(encoding)?;
 
-            //row.value.as_data_slice(offset, offset_length); //FIXME
-
-            let mut query_result = Map::new();
-
-            row.context.as_json_value(&mut query_result);
-
-            row.value.as_json_value(encoding)?;
-
-            Ok(Some(query_result.into()))
-        }
-    }
+    Ok(Some(query_result.into()))
 }
 
 /// Handler the for `getProgramAccounts`
@@ -139,16 +120,7 @@ pub async fn get_program_accounts(
         .add_commitment(commitment.queryable())
         .add_min_context_slot(min_context_slot);
 
-    let query = gpa.query();
-
-    PgConnection::client_exists().await?;
-    let guarded_pg_client = CLIENT.read().await;
-    let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
-
-    let rows = match pg_client.query(&query, &[]).await {
-        Ok(value) => value,
-        Err(error) => return Err(PgConnection::error_handler(&error)),
-    };
+    let rows = gpa.query().await?;
 
     let outcome = GetProgramAccountsRow::from_row(rows, encoding)?;
 

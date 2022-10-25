@@ -10,8 +10,8 @@ pub struct GetAccountInfoRow {
     pub(crate) value: Account,
 }
 
-impl From<&Row> for GetAccountInfoRow {
-    fn from(row: &Row) -> Self {
+impl From<Row> for GetAccountInfoRow {
+    fn from(row: Row) -> Self {
         let slot: i64 = row.get(0);
         let slot = slot as u64;
         let data: Vec<u8> = row.get(1);

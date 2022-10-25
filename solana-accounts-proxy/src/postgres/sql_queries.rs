@@ -1,4 +1,4 @@
-use crate::Commitment;
+use crate::{Commitment, GetAccountInfoRow, ProxyResult};
 
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {
@@ -39,29 +39,55 @@ impl<'q> GetAccountInfoQuery<'q> {
     }
 
     /// Build the SQL query
-    pub fn query(self) -> String {
-        let mut query = String::new(); //FIXME switch to using `postgres-query`
+    pub async fn query(self) -> ProxyResult<GetAccountInfoRow> {
+        crate::PgConnection::client_exists().await?;
+        let guarded_pg_client = crate::CLIENT.read().await;
+        let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
 
-        query.push_str(
-            "SELECT 
-            account_write.slot,
-            account_write.data,
-            account_write.executable,
-            account_write.owner,
-            account_write.lamports,
-            account_write.rent_epoch
-        FROM account_write WHERE pubkey = '",
-        );
-        query.push_str(self.base58_public_key);
+        let pubkey = self.base58_public_key;
 
         if let Some(min_context_slot) = self.min_context_slot {
-            query.push_str("AND slot >= ");
-            query.push_str(&min_context_slot.to_string());
+            let slot = min_context_slot as i64;
+
+            let row = pg_client
+                .query_one(
+                    "
+                    SELECT 
+                        account_write.slot,
+                        account_write.data,
+                        account_write.executable,
+                        account_write.owner,
+                        account_write.lamports,
+                        account_write.rent_epoch
+                    FROM account_write WHERE pubkey = '$1'
+                    AND slot >= $2;",
+                    &[&pubkey, &slot],
+                )
+                .await?;
+
+            let outcome: GetAccountInfoRow = row.into();
+
+            Ok(outcome)
+        } else {
+            let row = pg_client
+                .query_one(
+                    "
+                    SELECT 
+                        account_write.slot,
+                        account_write.data,
+                        account_write.executable,
+                        account_write.owner,
+                        account_write.lamports,
+                        account_write.rent_epoch
+                    FROM account_write WHERE pubkey = '$1';",
+                    &[&pubkey],
+                )
+                .await?;
+
+            let outcome: GetAccountInfoRow = row.into();
+
+            Ok(outcome)
         }
-
-        query.push_str("';");
-
-        query
     }
 }
 
@@ -110,17 +136,19 @@ impl<'q> GetProgramAccounts<'q> {
     }
 
     /// Build the SQL query
-    pub fn query(self) -> String {
+    pub async fn query(self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         let commitment: Commitment = self.commitment.into();
         let commitment = commitment.queryable();
         let owner = self.base58_public_key;
 
+        crate::PgConnection::client_exists().await?;
+        let guarded_pg_client = crate::CLIENT.read().await;
+        let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
+
         if let Some(min_context_slot) = self.min_context_slot {
             let slot = min_context_slot as i64;
 
-            //FIXME Switch to `postgres_query::Query` using `query!()` macro
-            format!(
-                "
+            let rows = pg_client.query("
                 SELECT DISTINCT on(account_write.pubkey) 
                     account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
                 FROM account_write
@@ -128,13 +156,12 @@ impl<'q> GetProgramAccounts<'q> {
                     slot >= (SELECT MIN({}) FROM slot WHERE slot.status::VARCHAR = '{}')
                 AND owner = '{}'
                 ORDER BY account_write.pubkey, account_write.slot;
-                ",
-                slot, commitment, owner
-            )
-        } else {
-            //FIXME Switch to `postgres_query::Query` using `query!()` macro
+            ",
+            &[&slot, &commitment, &owner]).await?;
 
-            format!(
+            Ok(rows)
+        } else {
+            let rows = pg_client.query(
                 "
             SELECT DISTINCT on(account_write.pubkey) 
             account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
@@ -144,8 +171,10 @@ impl<'q> GetProgramAccounts<'q> {
                 AND owner = '{}'
                 ORDER BY account_write.pubkey, account_write.slot;
                 ",
-                commitment, owner
-            )
+                &[&commitment, &owner]
+            ).await?;
+
+            Ok(rows)
         }
     }
 }

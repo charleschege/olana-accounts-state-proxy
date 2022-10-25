@@ -1,8 +1,6 @@
 use core::fmt;
-use jsonrpsee::core::RpcResult;
+use jsonrpsee::core::{Error as JsonrpseeError, RpcResult};
 use serde::Deserialize;
-
-use crate::ErrorHandler;
 
 /// Holds and ed25519 public key for a Solana program or account
 #[derive(Deserialize)]
@@ -15,9 +13,9 @@ impl PubKey {
         let decoded_bytes = match bs58::decode(&value).into_vec() {
             Ok(value) => value,
             Err(_) => {
-                return Err(
-                    ErrorHandler::new("The encoded public key is not valid Base58 format").build(),
-                )
+                return Err(JsonrpseeError::Custom(
+                    "The encoded public key is not valid Base58 format".to_owned(),
+                ))
             }
         };
 
@@ -31,7 +29,7 @@ impl PubKey {
                 error.push_str(decoded_bytes_len.to_string().as_str());
                 error.push_str("` bytes instead of `32 bytes`.");
 
-                return Err(ErrorHandler::new(&error).build());
+                return Err(JsonrpseeError::Custom(error));
             }
         };
 
@@ -105,12 +103,12 @@ impl Encoding {
                 let mut buffer = data.to_vec();
                 let encoder = match zstd::Encoder::new(&mut buffer, 3) {
                     Ok(data) => data,
-                    Err(error) => return Err(ErrorHandler::new(&error.to_string()).build()),
+                    Err(error) => return Err(JsonrpseeError::Custom(error.to_string())),
                 };
 
                 match encoder.finish() {
                     Ok(data) => data,
-                    Err(error) => return Err(ErrorHandler::new(&error.to_string()).build()),
+                    Err(error) => return Err(JsonrpseeError::Custom(error.to_string())),
                 };
 
                 Ok(base64::encode(&buffer))
@@ -129,14 +127,14 @@ impl Encoding {
         match self {
             Self::Base58 => match bs58::decode(data).into_vec() {
                 Ok(decoded_data) => Ok(decoded_data),
-                Err(error) => Err(ErrorHandler::new(&error.to_string()).build()),
+                Err(error) => Err(JsonrpseeError::Custom(error.to_string())),
             },
             _ => {
                 let mut to_rpc_error = "Unsupported data encoding format `".to_owned();
                 to_rpc_error.push_str(self.to_str());
                 to_rpc_error.push_str("` for the method.");
 
-                Err(ErrorHandler::new(&to_rpc_error).build())
+                Err(JsonrpseeError::Custom(to_rpc_error.to_string()))
             }
         }
     }
