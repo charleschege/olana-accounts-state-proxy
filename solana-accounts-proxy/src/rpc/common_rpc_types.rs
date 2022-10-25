@@ -19,12 +19,14 @@ impl Context {
         slot.insert("slot".into(), self.slot.into());
 
         if let Some(api_version) = self.api_version.as_ref() {
-            map.insert("apiVersion".into(), api_version.as_str().into());
+            slot.insert("apiVersion".into(), api_version.as_str().into());
         }
+
+        map.insert("context".into(), slot.into());
     }
 }
 
-/// The result of a n RPC request
+/// The result of an RPC request
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct RpcResult<T> {
     /// The JSON version

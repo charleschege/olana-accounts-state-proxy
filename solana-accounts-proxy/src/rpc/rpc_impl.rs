@@ -80,7 +80,7 @@ pub async fn get_account_info(
 
     row.context.as_json_value(&mut query_result);
 
-    row.value.as_json_value(encoding)?;
+    row.value.as_json_value(encoding, &mut query_result)?;
 
     Ok(Some(query_result.into()))
 }

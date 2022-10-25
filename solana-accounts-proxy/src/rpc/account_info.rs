@@ -18,10 +18,10 @@ impl AccountInfo {
     /// Convert the `AccountInfo` into a JSON value to pass to the
     /// RPC response
     pub fn as_json_value(&self, encoding: crate::Encoding) -> RpcResult<SerdeJsonValue> {
-        let account = self.account.as_json_value(encoding)?;
         let mut map = Map::new();
         map.insert("pubkey".to_owned(), self.pubkey.as_str().into());
-        map.insert("account".to_owned(), account.into());
+
+        self.account.as_json_value(encoding, &mut map)?;
 
         Ok(map.into())
     }
@@ -71,7 +71,8 @@ impl Account {
     pub fn as_json_value(
         &self,
         encoding: crate::Encoding,
-    ) -> RpcResult<Map<String, SerdeJsonValue>> {
+        map: &mut Map<String, SerdeJsonValue>,
+    ) -> RpcResult<()> {
         let mut json_result = Map::new();
         json_result.insert(
             "data".into(),
@@ -85,7 +86,9 @@ impl Account {
         json_result.insert("owner".into(), self.owner.clone().into());
         json_result.insert("rentEpoch".into(), self.rent_epoch.into());
 
-        Ok(json_result)
+        map.insert("account".into(), json_result.into());
+
+        Ok(())
     }
 }
 
