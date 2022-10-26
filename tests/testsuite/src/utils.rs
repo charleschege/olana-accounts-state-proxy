@@ -87,8 +87,6 @@ pub async fn load_binary() -> anyhow::Result<PathBuf> {
     #[cfg(not(debug_assertions))]
     binary.push("target/release/solana-accounts-proxy-server");
 
-    dbg!(&binary);
-
     std::process::Command::new(binary)
         .arg(proxy_config_file.clone())
         .spawn()?;

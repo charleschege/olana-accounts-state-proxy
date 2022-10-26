@@ -11,6 +11,13 @@ pub struct GetProgramAccountsTests<'gpa> {
     offset: u64,
     data_size: u64,
     encoding: Cow<'gpa, str>,
+    commitment: Option<Cow<'gpa, str>>,
+}
+
+impl<'gpa> Default for GetProgramAccountsTests<'gpa> {
+    fn default() -> Self {
+        GetProgramAccountsTests::new()
+    }
 }
 
 impl<'gpa> GetProgramAccountsTests<'gpa> {
@@ -21,6 +28,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             offset: u64::default(),
             data_size: u64::default(),
             encoding: Cow::default(),
+            commitment: Option::None,
         }
     }
 
@@ -54,11 +62,22 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         self
     }
 
+    pub fn add_commitment(&mut self, commitment: &'gpa str) -> &mut Self {
+        self.commitment = Some(Cow::Borrowed(commitment));
+
+        self
+    }
+
     pub fn own(self) -> Self {
         self
     }
 
     pub fn to_json_string(&self) -> String {
+        let commitment = match self.commitment.as_ref() {
+            Some(commitment) => commitment.to_string(),
+            None => "finalized".to_owned(),
+        };
+
         json::object! {
             jsonrpc:"2.0",
             id: 1,
@@ -67,15 +86,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
                 self.program_id.to_string(),
                 json::object!{
                     encoding: self.encoding.to_string(),
-                    filters: json::array![
-                        json::object!{ dataSize: self.data_size },
-                        json::object!{
-                            memcmp: json::object!{
-                                offset: self.offset,
-                                bytes: self.offset_public_key.to_string(),
-                            }
-                        }
-                    ]
+                    commitment: commitment.as_str(),
                 }
             ]
         }
@@ -108,8 +119,6 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
 
         let config = toml::from_str::<ProxyConfig>(&contents)?;
 
-        dbg!(&config);
-
         let mut proxy_url = String::new();
         proxy_url.push_str("http://");
         proxy_url.push_str(config.get_socketaddr().to_string().as_str());
@@ -119,8 +128,6 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             .with_body(self.to_json_string())
             .send()?;
 
-        dbg!(&response.as_str());
-
         Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
             response.as_str()?,
         )?)
@@ -129,7 +136,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
 
 /// AccountInfo which is just an [Account] with an additional field of `pubkey`
 /// Account information
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccountInfo {
     pub pubkey: String,
@@ -137,7 +144,7 @@ pub struct RpcAccountInfo {
 }
 
 /// An Account
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccount {
     /// The data specific to the account in the specified encoding format `(data, encoding_format)`
