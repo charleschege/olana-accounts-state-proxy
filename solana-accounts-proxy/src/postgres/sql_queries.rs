@@ -153,8 +153,8 @@ impl<'q> GetProgramAccounts<'q> {
                     account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
                 FROM account_write
                 WHERE
-                    slot >= (SELECT MIN($1) FROM slot WHERE slot.status::VARCHAR = '$2')
-                AND owner = '$3'
+                    slot >= (SELECT MIN($1) FROM slot WHERE slot.status::VARCHAR = $2::TEXT)
+                AND owner = $3::TEXT
                 ORDER BY account_write.pubkey, account_write.slot;
             ",
             &[&slot, &commitment, &owner]).await?;
@@ -167,8 +167,8 @@ impl<'q> GetProgramAccounts<'q> {
             account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
             FROM account_write
                 WHERE
-                    slot <= (SELECT MAX(slot) FROM slot WHERE slot.status::VARCHAR = '$1')
-                AND owner = '$2'
+                    slot <= (SELECT MAX(slot) FROM slot WHERE slot.status::VARCHAR = $1::TEXT)
+                AND owner = $2::TEXT
                 ORDER BY account_write.pubkey, account_write.slot;
                 ",
                 &[&commitment, &owner]
