@@ -86,7 +86,7 @@ impl Account {
         json_result.insert("owner".into(), self.owner.clone().into());
         json_result.insert("rentEpoch".into(), self.rent_epoch.into());
 
-        map.insert("account".into(), json_result.into());
+        map.insert("value".into(), json_result.into());
 
         Ok(())
     }
