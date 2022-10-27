@@ -47,6 +47,7 @@ pub async fn http_server(
 
     let server = HttpServerBuilder::new()
         .set_access_control(acl) //TODO
+        .max_response_body_size(u32::MAX)
         .build_from_hyper(server, socket_addr)?;
 
     let addr = server.local_addr()?;
