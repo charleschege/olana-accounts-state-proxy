@@ -14,7 +14,20 @@ pub struct Context {
 impl Context {
     /// Converts the [Context] into [serde_json::Value] and then inserts it to the
     /// `result` map
-    pub fn as_json_value(&self, map: &mut Map<String, JsonValue>) {
+    pub fn as_json_value(&self) -> Map<String, JsonValue> {
+        let mut context = Map::new();
+        context.insert("slot".into(), self.slot.into());
+
+        if let Some(api_version) = self.api_version.as_ref() {
+            context.insert("apiVersion".into(), api_version.as_str().into());
+        }
+
+        context
+    }
+
+    /// Converts the [Context] into [serde_json::Value] and then inserts it to the
+    /// `result` map
+    pub fn insert_json_value(&self, map: &mut Map<String, JsonValue>) {
         let mut slot = Map::new();
         slot.insert("slot".into(), self.slot.into());
 
@@ -52,9 +65,32 @@ impl<T> RpcResult<T> where T: serde::de::DeserializeOwned + std::fmt::Debug {}
 
 /// The value of the data contained in the RPC request
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RpcResultData<U> {
+pub struct WithContext<U> {
     context: Context,
     value: U,
 }
 
-impl<U> RpcResult<U> where U: serde::de::DeserializeOwned + std::fmt::Debug {}
+impl<U> WithContext<U>
+where
+    U: serde::de::DeserializeOwned + std::fmt::Debug + Default,
+{
+    /// Instantiate a new `WithContext` struct
+    pub fn new(context: Context) -> WithContext<U> {
+        WithContext {
+            context,
+            value: U::default(),
+        }
+    }
+
+    /// Convert `WithContext` to JSON value
+    pub fn as_json_value(self, value: JsonValue) -> Map<String, JsonValue> {
+        let context_as_json = self.context.as_json_value();
+
+        let mut map = Map::new();
+
+        map.insert("context".into(), context_as_json.into());
+        map.insert("value".into(), value);
+
+        map
+    }
+}

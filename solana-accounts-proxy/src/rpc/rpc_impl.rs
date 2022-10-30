@@ -1,6 +1,7 @@
 use crate::{
-    Commitment, DataSize, DataSlice, Encoding, GetAccountInfoQuery, GetProgramAccounts,
-    GetProgramAccountsRow, MemCmp, Parameters, PubKey, RpcProxyServer,
+    Commitment, Context, CurrentSlot, DataSize, DataSlice, Encoding, GetAccountInfoQuery,
+    GetProgramAccounts, GetProgramAccountsRow, MemCmp, Parameters, PubKey, RpcProxyServer,
+    WithContext,
 };
 use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
@@ -78,7 +79,7 @@ pub async fn get_account_info(
 
     let mut query_result = Map::new();
 
-    row.context.as_json_value(&mut query_result);
+    row.context.insert_json_value(&mut query_result);
 
     row.value.as_json_value(encoding, &mut query_result)?;
 
@@ -91,18 +92,26 @@ pub async fn get_program_accounts(
     parameters: Option<Parameters>,
 ) -> RpcResult<Option<JsonValue>> {
     let mut data_slice = DataSlice::default();
-    let mut with_context = bool::default();
     let mut filters = (DataSize::default(), MemCmp::default());
     let mut commitment = Commitment::Finalized;
     let mut min_context_slot: Option<u64> = Option::None;
     let encoding = Encoding::get_encoding(parameters.as_ref());
+
+    let mut current_slot: Option<Context> = Option::None;
 
     if let Some(has_parameters) = parameters {
         if let Some(inner_data_slice) = has_parameters.data_slice.as_ref() {
             data_slice = *inner_data_slice;
         }
         if let Some(has_with_context) = has_parameters.with_context.as_ref() {
-            with_context = *has_with_context;
+            if *has_with_context {
+                current_slot = Some(
+                    CurrentSlot::new()
+                        .add_commitment(commitment)
+                        .query()
+                        .await?,
+                );
+            }
         }
         if let Some(has_filter) = has_parameters.filters {
             filters = has_filter;
@@ -126,6 +135,11 @@ pub async fn get_program_accounts(
 
     if outcome.is_empty() {
         Ok(Option::None)
+    } else if let Some(context) = current_slot {
+        let with_context =
+            WithContext::<Vec<JsonValue>>::new(context).as_json_value(outcome.into());
+
+        Ok(Some(with_context.into()))
     } else {
         Ok(Some(outcome.into()))
     }
