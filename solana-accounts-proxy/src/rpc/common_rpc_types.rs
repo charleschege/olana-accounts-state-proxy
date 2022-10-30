@@ -26,6 +26,17 @@ impl Context {
     }
 }
 
+impl From<tokio_postgres::Row> for Context {
+    fn from(row: tokio_postgres::Row) -> Self {
+        let max: i64 = row.get(0);
+
+        Context {
+            slot: max as u64,
+            api_version: Option::None, //TODO Add the API version here
+        }
+    }
+}
+
 /// The result of an RPC request
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct RpcResult<T> {

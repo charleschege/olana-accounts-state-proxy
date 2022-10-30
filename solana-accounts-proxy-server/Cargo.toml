@@ -2,6 +2,8 @@
 name = "solana-accounts-proxy-server"
 version = "0.1.0"
 edition = "2021"
+authorhs = ["Charles Chege <charleschege@protnmail.ch>"]
+license = "LicenseRef-TritonOne"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

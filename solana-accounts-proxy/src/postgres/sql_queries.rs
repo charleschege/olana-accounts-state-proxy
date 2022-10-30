@@ -1,4 +1,4 @@
-use crate::{Commitment, GetAccountInfoRow, ProxyResult};
+use crate::{Commitment, Context, GetAccountInfoRow, ProxyResult};
 
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {
@@ -182,5 +182,56 @@ impl<'q> GetProgramAccounts<'q> {
 impl<'q> Default for GetProgramAccounts<'q> {
     fn default() -> Self {
         GetProgramAccounts::new()
+    }
+}
+
+/// Get the current slot by querying the `MAX` slot from the database
+#[derive(Debug)]
+pub struct CurrentSlot {
+    /// The commitment to use to get the max slot
+    pub commitment: Commitment,
+}
+
+impl Default for CurrentSlot {
+    fn default() -> Self {
+        CurrentSlot {
+            commitment: Commitment::Finalized,
+        }
+    }
+}
+
+impl CurrentSlot {
+    /// Instantiate a new structure
+    pub fn new() -> Self {
+        CurrentSlot::default()
+    }
+
+    /// Change the commitment level for the query
+    pub fn add_commitment(mut self, commitment: Commitment) -> Self {
+        self.commitment = commitment;
+
+        self
+    }
+
+    /// Run the query in the database and deserialize it to [Self]
+    pub async fn query(self) -> ProxyResult<Context> {
+        let commitment = self.commitment.queryable();
+
+        crate::PgConnection::client_exists().await?;
+        let guarded_pg_client = crate::CLIENT.read().await;
+        let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
+
+        let row = pg_client
+            .query_one(
+                "
+            SELECT MAX(slot) FROM slot WHERE status::VARCHAR = $1::TEXT;
+            ",
+                &[&commitment],
+            )
+            .await?;
+
+        let context: Context = row.into();
+
+        Ok(context)
     }
 }
