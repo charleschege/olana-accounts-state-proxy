@@ -1,6 +1,6 @@
 use crate::{TestsuiteConfig, APPLICATION_JSON, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use solana_accounts_proxy::{AccountInfo, Context, ProxyConfig, RpcResult, RpcResultData};
+use solana_accounts_proxy::{ProxyConfig, RpcResult, WithContext};
 use std::{borrow::Cow, path::Path};
 use tokio::{fs::File, io::AsyncReadExt};
 
@@ -12,6 +12,7 @@ pub struct GetProgramAccountsTests<'gpa> {
     data_size: u64,
     encoding: Cow<'gpa, str>,
     commitment: Option<Cow<'gpa, str>>,
+    with_context: bool,
 }
 
 impl<'gpa> Default for GetProgramAccountsTests<'gpa> {
@@ -29,6 +30,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             data_size: u64::default(),
             encoding: Cow::default(),
             commitment: Option::None,
+            with_context: false,
         }
     }
 
@@ -68,6 +70,12 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         self
     }
 
+    pub fn add_with_context(&mut self, with_context: bool) -> &mut Self {
+        self.with_context = with_context;
+
+        self
+    }
+
     pub fn own(self) -> Self {
         self
     }
@@ -87,6 +95,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
                 json::object!{
                     encoding: self.encoding.to_string(),
                     commitment: commitment.as_str(),
+                    withContext: self.with_context
                 }
             ]
         }
@@ -96,7 +105,7 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
     pub async fn req_from_rpcpool(
         &self,
         config: &TestsuiteConfig,
-    ) -> anyhow::Result<RpcResult<Vec<RpcAccountInfo>>> {
+    ) -> anyhow::Result<RpcResult<WithContext<Vec<RpcAccountInfo>>>> {
         let mainnet_url = config.url().clone();
 
         let response = minreq::post(mainnet_url)
@@ -104,15 +113,15 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             .with_body(self.to_json_string())
             .send()?;
 
-        Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
-            response.as_str()?,
-        )?)
+        Ok(serde_json::from_str::<
+            RpcResult<WithContext<Vec<RpcAccountInfo>>>,
+        >(response.as_str()?)?)
     }
 
     pub async fn req_from_proxy(
         &self,
         proxy_config_file: &Path,
-    ) -> anyhow::Result<RpcResult<Vec<RpcAccountInfo>>> {
+    ) -> anyhow::Result<RpcResult<WithContext<Vec<RpcAccountInfo>>>> {
         let mut file = File::open(proxy_config_file).await?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
@@ -128,9 +137,9 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
             .with_body(self.to_json_string())
             .send()?;
 
-        Ok(serde_json::from_str::<RpcResult<Vec<RpcAccountInfo>>>(
-            response.as_str()?,
-        )?)
+        Ok(serde_json::from_str::<
+            RpcResult<WithContext<Vec<RpcAccountInfo>>>,
+        >(response.as_str()?)?)
     }
 }
 

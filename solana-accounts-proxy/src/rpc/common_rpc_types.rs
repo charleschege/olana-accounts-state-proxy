@@ -66,8 +66,10 @@ impl<T> RpcResult<T> where T: serde::de::DeserializeOwned + std::fmt::Debug {}
 /// The value of the data contained in the RPC request
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WithContext<U> {
-    context: Context,
-    value: U,
+    /// The `slot` number and `apiVersion` (if supported)
+    pub context: Context,
+    /// The data from the result
+    pub value: U,
 }
 
 impl<U> WithContext<U>
