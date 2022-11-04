@@ -4,7 +4,7 @@ use solana_accounts_proxy::{ProxyConfig, RpcResult, WithContext};
 use std::{borrow::Cow, path::Path};
 use tokio::{fs::File, io::AsyncReadExt};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GetProgramAccountsTests<'gpa> {
     program_id: Cow<'gpa, str>,
     offset_public_key: Cow<'gpa, str>,
@@ -127,10 +127,13 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         file.read_to_string(&mut contents).await?;
 
         let config = toml::from_str::<ProxyConfig>(&contents)?;
+        tracing::info!("{:?}", &config);
 
         let mut proxy_url = String::new();
         proxy_url.push_str("http://");
         proxy_url.push_str(config.get_socketaddr().to_string().as_str());
+
+        tracing::info!("PROXY ADDR FROM CONFIG FILE: {:?}", &proxy_url);
 
         let response = minreq::post(proxy_url)
             .with_header(CONTENT_TYPE, APPLICATION_JSON)

@@ -6,13 +6,13 @@ pub const CONTENT_TYPE: &str = "Content-Type";
 pub const APPLICATION_JSON: &str = "application/json";
 pub const ARGS_ERROR: &str = "The program takes only one argument which is the path to the location of the configuration file.";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct GpaParameters {
     pubkey: String,
     parameters: Vec<Parameters>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Parameters {
     data_slice: u64,
     offset: usize,
@@ -20,7 +20,7 @@ pub struct Parameters {
     encoding: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct TestsuiteConfig {
     rpcpool_url: String,
     data: Vec<GpaParameters>,

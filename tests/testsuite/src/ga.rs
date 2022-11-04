@@ -1,10 +1,9 @@
-use crate::{RpcAccount, RpcAccountInfo, TestsuiteConfig, APPLICATION_JSON, CONTENT_TYPE};
-use serde::{Deserialize, Serialize};
-use solana_accounts_proxy::{AccountInfo, Context, ProxyConfig, RpcResult, WithContext};
+use crate::{RpcAccount, TestsuiteConfig, APPLICATION_JSON, CONTENT_TYPE};
+use solana_accounts_proxy::{ProxyConfig, RpcResult, WithContext};
 use std::{borrow::Cow, path::Path};
 use tokio::{fs::File, io::AsyncReadExt};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Ga<'gpa> {
     pubkey: Cow<'gpa, str>,
     encoding: Cow<'gpa, str>,
@@ -57,7 +56,7 @@ impl<'gpa> Ga<'gpa> {
 
     pub async fn req_from_rpcpool(
         &self,
-        config: &TestsuiteConfig,
+        config: TestsuiteConfig,
     ) -> anyhow::Result<RpcResult<WithContext<RpcAccount>>> {
         let mainnet_url = config.url().clone();
 
@@ -89,8 +88,6 @@ impl<'gpa> Ga<'gpa> {
             .with_header(CONTENT_TYPE, APPLICATION_JSON)
             .with_body(self.to_json_string())
             .send()?;
-
-        dbg!(&response.as_str());
 
         Ok(serde_json::from_str::<RpcResult<WithContext<RpcAccount>>>(
             response.as_str()?,
