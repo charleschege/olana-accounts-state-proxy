@@ -1,8 +1,7 @@
-use std::path::Path;
-
-use solana_accounts_proxy::{RpcResult, WithContext};
+use std::path::PathBuf;
 
 use crate::{Ga, RpcAccount, RpcAccountInfo, TestsuiteConfig};
+use solana_accounts_proxy::{RpcResult, WithContext};
 
 type GaResponse = RpcResult<WithContext<RpcAccount>>;
 
@@ -10,15 +9,15 @@ type GpaResponse = RpcResult<WithContext<Vec<RpcAccountInfo>>>;
 
 #[derive(Debug)]
 pub struct ParallelTest<'gpa> {
-    proxy_config_path: &'gpa Path,
-    config: &'gpa TestsuiteConfig,
+    testsuite_config: &'gpa TestsuiteConfig,
+    proxy_file_absolute_path: PathBuf,
 }
 
 impl<'gpa> ParallelTest<'gpa> {
-    pub fn new(proxy_config_path: &'gpa Path, config: &'gpa TestsuiteConfig) -> Self {
+    pub fn new(testsuite_config: &'gpa TestsuiteConfig, proxy_file_absolute_path: PathBuf) -> Self {
         ParallelTest {
-            proxy_config_path,
-            config,
+            testsuite_config,
+            proxy_file_absolute_path,
         }
     }
 
@@ -33,7 +32,7 @@ impl<'gpa> ParallelTest<'gpa> {
             .add_encoding(encoding);
 
         let spawn_ga_data = ga_data.clone();
-        let spawn_config = self.config.clone();
+        let spawn_config = self.testsuite_config.clone();
 
         let rpcpool_thread = tokio::spawn(async move {
             tracing::debug!("Fetching `getAccountInfo` for rpcpool in thread");
@@ -45,7 +44,9 @@ impl<'gpa> ParallelTest<'gpa> {
 
         dbg!(&self);
 
-        let proxy_outcome = ga_data.req_from_proxy(self.proxy_config_path).await?;
+        let proxy_outcome = ga_data
+            .req_from_proxy(&self.testsuite_config.proxy_config_file)
+            .await?;
 
         let rpcpool_outcome = rpcpool_thread.await??;
 
@@ -58,25 +59,21 @@ impl<'gpa> ParallelTest<'gpa> {
     }
 
     pub async fn run_gpa(&self) -> anyhow::Result<()> {
-        let program_id = "ZETAxsqBRek56DhiGXrn75yj2NHU3aYUnxvHXpkf3aD";
-        let offset_public_key = "CyZuD7RPDcrqCGbNvLCyqk6Py9cEZTKmNKujfPi3ynDd";
-        let offset = 32;
-        let data_size = 165;
-        let encoding = "base64";
-        let commitment = "finalized";
+        //TODO Iterate over all values
+        let gpa_data = self.testsuite_config.gpa_data[0].clone();
 
         let mut gpa_tests = crate::GetProgramAccountsTests::new();
         gpa_tests
-            .add_program_id(program_id)
+            .add_program_id(&gpa_data.0.clone())
             //.add_offset_public_key(offset_public_key)
             //.add_data_size(data_size)
             //.add_offset(offset)
-            .add_commitment(commitment)
-            .add_encoding(encoding)
+            .add_commitment(&gpa_data.1.commitment)
+            .add_encoding(&gpa_data.1.encoding)
             .add_with_context(true);
 
         let spawn_gpa_data = gpa_tests.clone();
-        let spawn_config = self.config.clone();
+        let spawn_config = self.testsuite_config.clone();
 
         let rpcpool_thread = tokio::spawn(async move {
             tracing::debug!("Fetching `getProgramAccounts` for rpcpool in thread");
@@ -86,7 +83,9 @@ impl<'gpa> ParallelTest<'gpa> {
             Ok::<GpaResponse, anyhow::Error>(rpcpool_outcome)
         });
 
-        let proxy_outcome = gpa_tests.req_from_proxy(self.proxy_config_path).await?;
+        let proxy_outcome = gpa_tests
+            .req_from_proxy(&self.proxy_file_absolute_path)
+            .await?;
 
         let rpcpool_outcome = rpcpool_thread.await??;
 

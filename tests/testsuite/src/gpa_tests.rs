@@ -1,47 +1,47 @@
 use crate::{TestsuiteConfig, APPLICATION_JSON, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use solana_accounts_proxy::{ProxyConfig, RpcResult, WithContext};
-use std::{borrow::Cow, path::Path};
+use std::path::Path;
 use tokio::{fs::File, io::AsyncReadExt};
 
 #[derive(Debug, Clone)]
-pub struct GetProgramAccountsTests<'gpa> {
-    program_id: Cow<'gpa, str>,
-    offset_public_key: Cow<'gpa, str>,
+pub struct GetProgramAccountsTests {
+    program_id: String,
+    offset_public_key: String,
     offset: u64,
     data_size: u64,
-    encoding: Cow<'gpa, str>,
-    commitment: Option<Cow<'gpa, str>>,
+    encoding: String,
+    commitment: Option<String>,
     with_context: bool,
 }
 
-impl<'gpa> Default for GetProgramAccountsTests<'gpa> {
+impl Default for GetProgramAccountsTests {
     fn default() -> Self {
         GetProgramAccountsTests::new()
     }
 }
 
-impl<'gpa> GetProgramAccountsTests<'gpa> {
+impl GetProgramAccountsTests {
     pub fn new() -> Self {
         GetProgramAccountsTests {
-            program_id: Cow::default(),
-            offset_public_key: Cow::default(),
+            program_id: String::default(),
+            offset_public_key: String::default(),
             offset: u64::default(),
             data_size: u64::default(),
-            encoding: Cow::default(),
+            encoding: String::default(),
             commitment: Option::None,
             with_context: false,
         }
     }
 
-    pub fn add_program_id(&mut self, program_id: &'gpa str) -> &mut Self {
-        self.program_id = Cow::Borrowed(program_id);
+    pub fn add_program_id(&mut self, program_id: &str) -> &mut Self {
+        self.program_id = program_id.to_owned();
 
         self
     }
 
-    pub fn add_offset_public_key(&mut self, offset_public_key: &'gpa str) -> &mut Self {
-        self.offset_public_key = Cow::Borrowed(offset_public_key);
+    pub fn add_offset_public_key(&mut self, offset_public_key: &str) -> &mut Self {
+        self.offset_public_key = offset_public_key.to_owned();
 
         self
     }
@@ -58,14 +58,14 @@ impl<'gpa> GetProgramAccountsTests<'gpa> {
         self
     }
 
-    pub fn add_encoding(&mut self, encoding: &'gpa str) -> &mut Self {
-        self.encoding = Cow::Borrowed(encoding);
+    pub fn add_encoding(&mut self, encoding: &str) -> &mut Self {
+        self.encoding = encoding.to_owned();
 
         self
     }
 
-    pub fn add_commitment(&mut self, commitment: &'gpa str) -> &mut Self {
-        self.commitment = Some(Cow::Borrowed(commitment));
+    pub fn add_commitment(&mut self, commitment: &str) -> &mut Self {
+        self.commitment = Some(commitment.to_owned());
 
         self
     }

@@ -18,13 +18,18 @@ pub use parallel::*;
 async fn main() {
     log().unwrap();
 
-    let proxy_config_path = load_binary().await.unwrap();
-
     let config = TestsuiteConfig::load_config().await.unwrap();
+
+    let proxy_file_absolute_path = load_binary(
+        &config.proxy_config_file,
+        std::path::Path::new(&config.binary_name),
+    )
+    .await
+    .unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(15));
 
-    let para_test = ParallelTest::new(&proxy_config_path, &config);
+    let para_test = ParallelTest::new(&config, proxy_file_absolute_path);
 
     match para_test.run_gpa().await {
         Ok(_) => (),
