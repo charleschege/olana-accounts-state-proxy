@@ -43,29 +43,37 @@ pub struct GetProgramAccountsRow;
 impl GetProgramAccountsRow {
     /// Convert a postgres Row into [AccountInfo] then to JSON format in one method.
     pub fn from_row(rows: Vec<Row>, encoding: Encoding) -> RpcResult<Vec<SerdeJsonValue>> {
-        let mut account_info_list = Vec::<SerdeJsonValue>::new();
+        tracing::debug!("NUMBER OF ROWS TO PARSE: {:?}", &rows.len());
 
-        for row in rows {
-            let pubkey: String = row.get(0);
-            let owner: String = row.get(1);
-            let lamports: i64 = row.get(2);
-            let executable: bool = row.get(3);
-            let rent_epoch: i64 = row.get(4);
-            let data: Vec<u8> = row.get(5);
+        tracing::debug!("PARSING ROWS AND CONVERTING TO JSON");
 
-            let account = Account {
-                data,
-                executable,
-                owner,
-                lamports,
-                rent_epoch,
-            };
+        use rayon::prelude::*;
+        let account_info_list = rows
+            .par_iter()
+            .map(|row| {
+                let pubkey: String = row.get(0);
+                let owner: String = row.get(1);
+                let lamports: i64 = row.get(2);
+                let executable: bool = row.get(3);
+                let rent_epoch: i64 = row.get(4);
+                let data: Vec<u8> = row.get(5);
 
-            let account_info = AccountInfo { pubkey, account };
-            let to_json = account_info.as_json_value(encoding)?;
+                let account = Account {
+                    data,
+                    executable,
+                    owner,
+                    lamports,
+                    rent_epoch,
+                };
 
-            account_info_list.push(to_json);
-        }
+                let account_info = AccountInfo { pubkey, account };
+                let to_json = account_info.as_json_value(encoding).unwrap(); //FIXME
+
+                to_json
+            })
+            .collect::<Vec<SerdeJsonValue>>();
+
+        tracing::debug!("FINISHED PARSING ROWS AND CONVERTING TO JSON");
 
         Ok(account_info_list)
     }

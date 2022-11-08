@@ -97,9 +97,23 @@ impl Encoding {
     /// Encode data to the chosen format
     pub fn encode(&self, data: &[u8]) -> RpcResult<String> {
         match self {
-            Self::Base58 => Ok(bs58::encode(data).into_string()),
-            Self::Base64 => Ok(base64::encode(data)),
+            Self::Base58 => {
+                tracing::debug!("ENCODING DATA CHUNK AS Base58");
+                let data = bs58::encode(data).into_string();
+                tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base58");
+
+                Ok(data)
+            }
+            Self::Base64 => {
+                tracing::debug!("ENCODING DATA CHUNK AS Base64");
+                let data = base64::encode(data);
+                tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base64");
+
+                Ok(data)
+            }
             Self::Base64Zstd => {
+                tracing::debug!("ENCODING DATA CHUNK AS Base64+zstd");
+
                 let mut buffer = data.to_vec();
                 let encoder = match zstd::Encoder::new(&mut buffer, 3) {
                     Ok(data) => data,
@@ -111,12 +125,21 @@ impl Encoding {
                     Err(error) => return Err(JsonrpseeError::Custom(error.to_string())),
                 };
 
-                Ok(base64::encode(&buffer))
+                let data = base64::encode(&buffer);
+
+                tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base64+zstd");
+
+                Ok(data)
             }
             Self::JsonParsed => {
+                tracing::debug!("FINISHED ENCODING DATA CHUNK AS JsonParsed");
                 let to_json: json::JsonValue = data.into();
 
-                Ok(to_json.to_string())
+                let data = to_json.to_string();
+
+                tracing::debug!("FINISHED ENCODING DATA CHUNK AS JsonParsed");
+
+                Ok(data)
             }
         }
     }

@@ -145,6 +145,9 @@ impl<'q> GetProgramAccounts<'q> {
         let guarded_pg_client = crate::CLIENT.read().await;
         let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
 
+        // 1. Bare Get Program Accounts
+        // 2.
+
         if let Some(min_context_slot) = self.min_context_slot {
             let slot = min_context_slot as i64;
 
