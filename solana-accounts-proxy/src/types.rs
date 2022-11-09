@@ -98,6 +98,11 @@ impl Encoding {
     pub fn encode(&self, data: &[u8]) -> RpcResult<String> {
         match self {
             Self::Base58 => {
+                if data.len() > 129 {
+                    // FIXME Use correct JSON response code of `-32001`
+                    return Err(JsonrpseeError::ResourceNameAlreadyTaken("Encoded binary (base 58) data should be less than 128 bytes, please use Base64 encoding."));
+                }
+
                 tracing::debug!("ENCODING DATA CHUNK AS Base58");
                 let data = bs58::encode(data).into_string();
                 tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base58");

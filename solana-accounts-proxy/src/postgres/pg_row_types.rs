@@ -1,6 +1,7 @@
 use crate::{Account, AccountInfo, Context, Encoding};
-use jsonrpsee::core::RpcResult;
+use jsonrpsee::core::{Error as JsonrpseeError, RpcResult};
 use serde_json::Value as SerdeJsonValue;
+use tokio::time::Instant;
 use tokio_postgres::Row;
 
 /// Enables easier serialization from a postgres `Row` from the `getAccountInfo` query
@@ -44,8 +45,11 @@ impl GetProgramAccountsRow {
     /// Convert a postgres Row into [AccountInfo] then to JSON format in one method.
     pub fn from_row(rows: Vec<Row>, encoding: Encoding) -> RpcResult<Vec<SerdeJsonValue>> {
         tracing::debug!("NUMBER OF ROWS TO PARSE: {:?}", &rows.len());
-
         tracing::debug!("PARSING ROWS AND CONVERTING TO JSON");
+
+        let timer = Instant::now();
+
+        // FIXME remove re-allocations in each iter
 
         use rayon::prelude::*;
         let account_info_list = rows
@@ -67,13 +71,29 @@ impl GetProgramAccountsRow {
                 };
 
                 let account_info = AccountInfo { pubkey, account };
-                let to_json = account_info.as_json_value(encoding).unwrap(); //FIXME
+                let to_json = account_info.as_json_value(encoding);
 
                 to_json
             })
-            .collect::<Vec<SerdeJsonValue>>();
+            .collect::<RpcResult<Vec<SerdeJsonValue>>>();
 
-        tracing::debug!("FINISHED PARSING ROWS AND CONVERTING TO JSON");
+        let outcome = Instant::now().duration_since(timer);
+
+        tracing::debug!(
+            "FINISHED PARSING ROWS AND CONVERTING TO JSON IN {}s",
+            outcome.as_secs()
+        );
+
+        let mut mb = 0usize;
+        let account_info_list = account_info_list?;
+
+        for chunk in &account_info_list {
+            mb += chunk.to_string().as_bytes().len();
+        }
+
+        let to_mb = mb as f32 / 1024.0 / 1024.0;
+
+        tracing::debug!("TOTAL LENGTH OF DATA IN MB - {}", to_mb);
 
         Ok(account_info_list)
     }

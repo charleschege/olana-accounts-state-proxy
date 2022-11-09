@@ -145,9 +145,6 @@ impl<'q> GetProgramAccounts<'q> {
         let guarded_pg_client = crate::CLIENT.read().await;
         let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
 
-        // 1. Bare Get Program Accounts
-        // 2.
-
         if let Some(min_context_slot) = self.min_context_slot {
             let slot = min_context_slot as i64;
 
@@ -170,11 +167,11 @@ impl<'q> GetProgramAccounts<'q> {
             account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
             FROM account_write
                 WHERE
-                    slot <= (SELECT MAX(slot) FROM slot WHERE slot.status::VARCHAR = $1::TEXT)
-                AND owner = $2::TEXT
-                ORDER BY account_write.pubkey, account_write.slot;
+                    rooted = true
+                AND owner = $1::TEXT
+                ORDER BY account_write.pubkey, account_write.slot DESC;
                 ",
-                &[&commitment, &owner]
+                &[ &owner]
             ).await?;
 
             Ok(rows)

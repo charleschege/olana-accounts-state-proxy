@@ -2,6 +2,7 @@ use core::fmt;
 use jsonrpsee::core::RpcResult;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as SerdeJsonValue};
+use tokio::time::Instant;
 
 /// AccountInfo which is just an [Account] with an additional field of `pubkey`
 /// Account information
@@ -18,10 +19,21 @@ impl AccountInfo {
     /// Convert the `AccountInfo` into a JSON value to pass to the
     /// RPC response
     pub fn as_json_value(&self, encoding: crate::Encoding) -> RpcResult<SerdeJsonValue> {
+        let timer = Instant::now();
+
         let mut map = Map::new();
         map.insert("pubkey".to_owned(), self.pubkey.as_str().into());
 
         self.account.as_json_value(encoding, &mut map)?;
+
+        let outcome = Instant::now().duration_since(timer);
+
+        tracing::debug!(
+            "TIME TO ENCODE TO `AccountInfo` JSON: {}s {}ms {}ns",
+            outcome.as_secs(),
+            outcome.subsec_millis(),
+            outcome.subsec_nanos()
+        );
 
         Ok(map.into())
     }
