@@ -89,21 +89,7 @@ pub struct SocketConfig {
     ip: Ipv4Addr,
     port: u16,
 }
-/* TODO In case TLS will be required in the future
-/// Configures the TLS certificate and enforces that there is a
-/// certificate `.pem` file that can load the database certificate
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TlsConfig {
-    // `Require`, `Prefer` or `Disable`
-    pub(crate) ssl_mode: String,
-    // Channel binding is a concept defined in RFC 5056,
-    // to ensure that the frontend and the backend connecting to each other are the same
-    // in order to prevent man-in-the-middle attacks.
-    // `Require`, `Prefer` or `Disable`
-    pub(crate) channel_binding: String,
-    pub(crate) cert_path: PathBuf,
-}
-*/
+
 /// The configuration to pass to the Postgres connection
 #[derive(Deserialize)]
 pub struct PostgresConfig {

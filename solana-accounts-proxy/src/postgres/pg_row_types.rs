@@ -1,5 +1,5 @@
 use crate::{Account, AccountInfo, Context, Encoding};
-use jsonrpsee::core::{Error as JsonrpseeError, RpcResult};
+use jsonrpsee::core::RpcResult;
 use serde_json::Value as SerdeJsonValue;
 use tokio::time::Instant;
 use tokio_postgres::Row;

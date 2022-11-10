@@ -58,8 +58,7 @@ pub struct Parameters {
     /// The minimum slot the request can be evaluated at
     pub min_context_slot: Option<u64>,
     /// Filters to use on the results
-    //pub filters: Option<Vec<Filter>>,
-    pub filters: Option<(DataSize, MemCmp)>,
+    pub filters: Option<Vec<Filter>>,
     /// wrap the result in an RpcResponse JSON object.
     pub with_context: Option<bool>,
 }
@@ -233,12 +232,14 @@ pub struct DataSlice {
     pub length: usize,
 }
 
-/// compares the program account data length with the provided data size
-#[derive(Debug, Deserialize, Default)]
+/// Filters that data
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DataSize {
-    /// Length to compare
-    pub data_size: u64,
+pub enum Filter {
+    /// maps to the {DataSize} struct
+    DataSize(u64),
+    /// Maps to a list of [MemCmp]s
+    MemcmpInfo(MemCmp),
 }
 
 ///  Used to compare a provided series of bytes with program account data

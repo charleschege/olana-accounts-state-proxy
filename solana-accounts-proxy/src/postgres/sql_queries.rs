@@ -1,4 +1,4 @@
-use crate::{Commitment, Context, GetAccountInfoRow, ProxyResult};
+use crate::{Commitment, Context, DataSlice, Filter, GetAccountInfoRow, ProxyResult};
 
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {
@@ -102,6 +102,8 @@ pub struct GetProgramAccounts<'q> {
     base58_public_key: &'q str,
     commitment: &'q str,
     min_context_slot: Option<u64>,
+    data_slice: Option<DataSlice>,
+    filters: Option<Vec<Filter>>,
 }
 
 impl<'q> GetProgramAccounts<'q> {
@@ -111,6 +113,8 @@ impl<'q> GetProgramAccounts<'q> {
             base58_public_key: "",
             commitment: "",
             min_context_slot: Option::default(),
+            data_slice: Option::default(),
+            filters: Option::default(),
         }
     }
 
@@ -135,6 +139,20 @@ impl<'q> GetProgramAccounts<'q> {
         self
     }
 
+    /// Add the data slice
+    pub fn add_data_slice(mut self, data_slice: Option<DataSlice>) -> Self {
+        self.data_slice = data_slice;
+
+        self
+    }
+
+    /// Add the filters for the query
+    pub fn add_filters(mut self, filters: Option<Vec<Filter>>) -> Self {
+        self.filters = filters;
+
+        self
+    }
+
     /// Build the SQL query
     pub async fn query(self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         let commitment: Commitment = self.commitment.into();
@@ -145,37 +163,20 @@ impl<'q> GetProgramAccounts<'q> {
         let guarded_pg_client = crate::CLIENT.read().await;
         let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
 
-        if let Some(min_context_slot) = self.min_context_slot {
-            let slot = min_context_slot as i64;
-
-            let rows = pg_client.query("
-                SELECT DISTINCT on(account_write.pubkey) 
-                    account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
-                FROM account_write
-                WHERE
-                    slot >= (SELECT MIN($1) FROM slot WHERE slot.status::VARCHAR = $2::TEXT)
-                AND owner = $3::TEXT
-                ORDER BY account_write.pubkey, account_write.slot;
+        let rows = pg_client.query(
+            "
+        SELECT DISTINCT on(account_write.pubkey) 
+        account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
+        FROM account_write
+            WHERE
+                $0::TEXT = true
+            AND owner = $1::TEXT
+            ORDER BY account_write.pubkey, account_write.slot DESC;
             ",
-            &[&slot, &commitment, &owner]).await?;
+            &[&commitment, &owner]
+        ).await?;
 
-            Ok(rows)
-        } else {
-            let rows = pg_client.query(
-                "
-            SELECT DISTINCT on(account_write.pubkey) 
-            account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
-            FROM account_write
-                WHERE
-                    rooted = true
-                AND owner = $1::TEXT
-                ORDER BY account_write.pubkey, account_write.slot DESC;
-                ",
-                &[ &owner]
-            ).await?;
-
-            Ok(rows)
-        }
+        Ok(rows)
     }
 }
 

@@ -1,10 +1,9 @@
 use crate::{
-    Commitment, Context, CurrentSlot, DataSize, DataSlice, Encoding, GetAccountInfoQuery,
-    GetProgramAccounts, GetProgramAccountsRow, MemCmp, Parameters, PubKey, RpcProxyServer,
-    WithContext,
+    Commitment, Context, CurrentSlot, DataSlice, Encoding, GetAccountInfoQuery, GetProgramAccounts,
+    GetProgramAccountsRow, Parameters, PubKey, RpcProxyServer, WithContext,
 };
 use async_trait::async_trait;
-use jsonrpsee::core::RpcResult;
+use jsonrpsee::{core::Error as JsonrpseeError, core::RpcResult};
 use serde_json::{Map, Value as JsonValue};
 
 // Structure that will implement the `MyRpcServer` trait.
@@ -92,7 +91,7 @@ pub async fn get_program_accounts(
     parameters: Option<Parameters>,
 ) -> RpcResult<Option<JsonValue>> {
     let mut data_slice = DataSlice::default();
-    let mut filters = (DataSize::default(), MemCmp::default());
+    let mut filters = Vec::default();
     let mut commitment = Commitment::Finalized;
     let mut min_context_slot: Option<u64> = Option::None;
     let encoding = Encoding::get_encoding(parameters.as_ref());
@@ -114,6 +113,12 @@ pub async fn get_program_accounts(
             }
         }
         if let Some(has_filter) = has_parameters.filters {
+            // Check if the number of `Filters` is greater than 4
+            if has_filter.len() > 4 {
+                return Err(JsonrpseeError::Custom(
+                    "Too many filters provided; max 4".to_owned(),
+                ));
+            }
             filters = has_filter;
         }
 
