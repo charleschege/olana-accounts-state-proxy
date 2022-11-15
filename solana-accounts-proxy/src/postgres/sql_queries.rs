@@ -1,4 +1,6 @@
-use crate::{Commitment, Context, DataSlice, Filter, GetAccountInfoRow, ProxyResult};
+use crate::{
+    Commitment, Context, DataSlice, Encoding, Filter, GetAccountInfoRow, ProxyError, ProxyResult,
+};
 
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {
@@ -98,6 +100,7 @@ impl<'q> Default for GetAccountInfoQuery<'q> {
 }
 
 /// Helper struct for `getProgramAccounts`
+#[derive(Debug)]
 pub struct GetProgramAccounts<'q> {
     base58_public_key: &'q str,
     commitment: &'q str,
@@ -153,28 +156,92 @@ impl<'q> GetProgramAccounts<'q> {
         self
     }
 
-    /// Build the SQL query
-    pub async fn query(self) -> ProxyResult<Vec<tokio_postgres::Row>> {
+    /// `gPA` accounts with commitment level and an `owner`
+    pub async fn basic_with_commitment(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         let commitment: Commitment = self.commitment.into();
-        let commitment = commitment.queryable();
         let owner = self.base58_public_key;
 
         crate::PgConnection::client_exists().await?;
         let guarded_pg_client = crate::CLIENT.read().await;
         let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
 
-        let rows = pg_client.query(
-            "
-        SELECT DISTINCT on(account_write.pubkey) 
-        account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
-        FROM account_write
-            WHERE
-                $0::TEXT = true
+        if commitment == Commitment::Processed {
+            let rows = pg_client.query("
+            SELECT DISTINCT ON(account_write.pubkey) account_write.pubkey FROM account_write 
+            WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $1::TEXT
             ORDER BY account_write.pubkey, account_write.slot DESC;
-            ",
-            &[&commitment, &owner]
-        ).await?;
+            ", &[&owner]).await?;
+
+            Ok(rows)
+        } else if commitment == Commitment::Confirmed {
+            let rows = pg_client.query("
+            SELECT DISTINCT on(account_write.pubkey) account_write.pubkey FROM account_write 
+            WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed') )
+            AND owner = $1::TEXT
+            ORDER BY account_write.pubkey, account_write.slot DESC;
+            ", &[&owner]).await?;
+
+            Ok(rows)
+        } else {
+            let rows = pg_client.query(
+                "
+                SELECT DISTINCT on(account_write.pubkey)
+                    account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
+                FROM account_write
+                WHERE
+                    rooted = true
+                AND owner = $1::TEXT
+                ORDER BY account_write.pubkey, account_write.slot DESC;
+                ",
+                &[&owner]
+            ).await?;
+
+            Ok(rows)
+        }
+    }
+
+    /// `gPA` accounts with commitment level and an `owner`
+    pub async fn by_mint(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
+        let commitment: Commitment = self.commitment.into();
+        let owner = self.base58_public_key;
+
+        crate::PgConnection::client_exists().await?;
+        let guarded_pg_client = crate::CLIENT.read().await;
+        let pg_client = guarded_pg_client.as_ref().unwrap(); // Cannot fail since `Option::None` has been handled by `PgConnection::client_exists()?;` above
+
+        let memcmps = match self.filters.clone() {
+            Some(filters) => Filter::memcmps(filters)?,
+            None => {
+                return Err(ProxyError::Client(
+                    "Expected a `Filter` with `MemCmp` to build this query".to_owned(),
+                ))
+            }
+        };
+
+        let data_size = match &self.filters {
+            Some(filters) => Filter::data_size(&filters)? as i64,
+            None => {
+                return Err(ProxyError::Client(
+                    "Expected a `Filter` with a `dataSize` to build this query".to_owned(),
+                ))
+            }
+        };
+
+        let first_filter = memcmps[0].clone();
+
+        let offset_public_key = Encoding::Base58.decode(first_filter.bytes.as_bytes())?;
+        let offset = first_filter.offset as i64;
+
+        let rows = pg_client.query("
+            SELECT DISTINCT on(account_write.pubkey) * FROM account_write
+            WHERE                         
+                rooted = TRUE
+            AND owner = $1::TEXT 
+            AND substring(data,1,$2) = $2::TEXT
+            AND length(data) = $3                                                      
+            ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
+            ", &[&owner, &offset_public_key, &data_size]).await?;
 
         Ok(rows)
     }

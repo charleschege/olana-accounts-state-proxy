@@ -90,6 +90,8 @@ pub async fn get_program_accounts(
     base58_public_key: &str,
     parameters: Option<Parameters>,
 ) -> RpcResult<Option<JsonValue>> {
+    dbg!(&parameters);
+
     let mut data_slice = DataSlice::default();
     let mut filters = Vec::default();
     let mut commitment = Commitment::Finalized;

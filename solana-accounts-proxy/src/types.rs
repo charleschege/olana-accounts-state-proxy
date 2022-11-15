@@ -2,6 +2,8 @@ use core::fmt;
 use jsonrpsee::core::{Error as JsonrpseeError, RpcResult};
 use serde::Deserialize;
 
+use crate::{ProxyError, ProxyResult};
+
 /// Holds and ed25519 public key for a Solana program or account
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,18 +152,18 @@ impl Encoding {
 
     /// Decode data from a method parameter,
     /// `NOTE:` Only `base64` and `base58` formats, all other formats result in an RPC error.
-    pub fn decode(&self, data: &[u8]) -> RpcResult<Vec<u8>> {
+    pub fn decode(&self, data: &[u8]) -> ProxyResult<Vec<u8>> {
         match self {
             Self::Base58 => match bs58::decode(data).into_vec() {
                 Ok(decoded_data) => Ok(decoded_data),
-                Err(error) => Err(JsonrpseeError::Custom(error.to_string())),
+                Err(error) => Err(ProxyError::Client(error.to_string())),
             },
             _ => {
                 let mut to_rpc_error = "Unsupported data encoding format `".to_owned();
                 to_rpc_error.push_str(self.to_str());
                 to_rpc_error.push_str("` for the method.");
 
-                Err(JsonrpseeError::Custom(to_rpc_error.to_string()))
+                Err(ProxyError::Client(to_rpc_error.to_string()))
             }
         }
     }
@@ -178,7 +180,7 @@ impl Encoding {
 }
 
 /// Whether a block has been confirmed, is being processed or has been finalized
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[derive(postgres_types::ToSql)]
 pub enum Commitment {
@@ -233,26 +235,53 @@ pub struct DataSlice {
 }
 
 /// Filters that data
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Filter {
     /// maps to the {DataSize} struct
     DataSize(u64),
     /// Maps to a list of [MemCmp]s
-    MemcmpInfo(MemCmp),
+    #[serde(rename = "memcmp")]
+    Memcmp(MemCmpData),
 }
 
-///  Used to compare a provided series of bytes with program account data
-/// at a particular offset.
-#[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct MemCmp {
-    /// The data to use for the comparison operation
-    pub memcmp: MemCmpData,
+impl Filter {
+    /// Get the data size from the filters
+    pub fn data_size(filters: &[Filter]) -> ProxyResult<u64> {
+        match filters.get(0) {
+            Some(filter) => match filter {
+                Filter::DataSize(data_size) => Ok(*data_size),
+                _ => Err(ProxyError::Client(
+                    "Invalid Format for `Filters`. First index should be the `dataSize`".to_owned(),
+                )),
+            },
+            None => Err(ProxyError::Client(
+                "Expected a `Filter` at index 1".to_owned(),
+            )),
+        }
+    }
+
+    /// Get `MemCmp`s
+    pub fn memcmps(filters: Vec<Filter>) -> ProxyResult<Vec<MemCmpData>> {
+        let mut values = Vec::<MemCmpData>::new();
+
+        if filters.len() > 4 {
+            return Err(ProxyError::Client(
+                "Too many filters provided; max 4".to_owned(),
+            ));
+        }
+
+        filters.into_iter().skip(1).for_each(|filter| match filter {
+            Filter::Memcmp(inner_data) => values.push(inner_data),
+            _ => (),
+        });
+
+        Ok(values)
+    }
 }
 
 ///  The comparison data of [MemCmp]
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct MemCmpData {
     /// offset into program account data to start comparison
