@@ -6,7 +6,7 @@ impl<'q> GetProgramAccounts<'q> {
     
     /// `gPA` accounts with commitment level `Finalized` and `mint`
     // substring(data, {1}, {2}), memcmp.offset+1, len(memcmp.bytes)
-    pub async fn with_memcmp(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
+    pub async fn finalized_with_memcmp(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         let commitment: Commitment = self.commitment.into();
         let owner = self.base58_public_key;
 
@@ -140,7 +140,7 @@ impl<'q> GetProgramAccounts<'q> {
 
     /// `gPA` accounts with `Commitment` level, `Filters` and `dataSlice`
     // substring(data, {1}, {2}), memcmp.offset+1, len(memcmp.bytes)
-    pub async fn memcmp_and_data_slice(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
+    pub async fn finalized_memcmp_and_data_slice(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         let commitment: Commitment = self.commitment.into();
         let owner = self.base58_public_key;
         let data_slice = match self.data_slice {

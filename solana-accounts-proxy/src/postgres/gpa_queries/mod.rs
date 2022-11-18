@@ -68,6 +68,18 @@ impl<'q> GetProgramAccounts<'q> {
         self
     }
 
+    /// Executor for the queries
+    pub async fn load_data(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
+        dbg!(&self);
+
+        // Check if only basic queries are supported
+        if self.filters.is_none() && self.data_slice.is_none() && self.min_context_slot.is_none() {
+            self.basic_with_commitment().await
+        } else {
+            panic!()
+        }
+    }
+
     /// `gPA` accounts with commitment level and an `owner`
     pub async fn basic_with_commitment(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         let commitment: Commitment = self.commitment.into();

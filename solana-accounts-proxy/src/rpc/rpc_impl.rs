@@ -1,6 +1,6 @@
 use crate::{
-    Commitment, Context, CurrentSlot, DataSlice, Encoding, GetAccountInfoQuery, GetProgramAccounts,
-    GetProgramAccountsRow, Parameters, PubKey, RpcProxyServer, WithContext,
+    Commitment, Context, CurrentSlot, DataSlice, Encoding, Filter, GetAccountInfoQuery,
+    GetProgramAccounts, GetProgramAccountsRow, Parameters, PubKey, RpcProxyServer, WithContext,
 };
 use async_trait::async_trait;
 use jsonrpsee::{core::Error as JsonrpseeError, core::RpcResult};
@@ -92,18 +92,15 @@ pub async fn get_program_accounts(
 ) -> RpcResult<Option<JsonValue>> {
     dbg!(&parameters);
 
-    let mut data_slice = DataSlice::default();
-    let mut filters = Vec::default();
     let mut commitment = Commitment::Finalized;
     let mut min_context_slot: Option<u64> = Option::None;
     let encoding = Encoding::get_encoding(parameters.as_ref());
 
     let mut current_slot: Option<Context> = Option::None;
+    let mut filters: Option<Vec<Filter>> = Option::None;
+    let mut data_slice: Option<DataSlice> = Option::None;
 
     if let Some(has_parameters) = parameters {
-        if let Some(inner_data_slice) = has_parameters.data_slice.as_ref() {
-            data_slice = *inner_data_slice;
-        }
         if let Some(has_with_context) = has_parameters.with_context.as_ref() {
             if *has_with_context {
                 current_slot = Some(
@@ -121,7 +118,8 @@ pub async fn get_program_accounts(
                     "Too many filters provided; max 4".to_owned(),
                 ));
             }
-            filters = has_filter;
+
+            filters.replace(has_filter);
         }
 
         if let Some(req_commitment) = has_parameters.commitment {
@@ -129,14 +127,18 @@ pub async fn get_program_accounts(
         }
 
         min_context_slot = has_parameters.min_context_slot;
+
+        data_slice = has_parameters.data_slice;
     }
 
     let gpa = GetProgramAccounts::new()
         .add_public_key(base58_public_key)
         .add_commitment(commitment.queryable())
-        .add_min_context_slot(min_context_slot);
+        .add_min_context_slot(min_context_slot)
+        .add_filters(filters)
+        .add_data_slice(data_slice);
 
-    let rows = gpa.basic_with_commitment().await?;
+    let rows = gpa.load_data().await?;
 
     let outcome = GetProgramAccountsRow::from_row(rows, encoding)?;
 
