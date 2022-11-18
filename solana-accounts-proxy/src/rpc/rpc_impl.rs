@@ -62,18 +62,6 @@ pub async fn get_account_info(
         .add_public_key(base58_public_key)
         .add_commitment(commitment);
 
-    let mut offset = 0usize;
-    let mut offset_length = 0usize;
-
-    if let Some(parameters_inner) = parameters {
-        ga_query.add_min_context_slot(parameters_inner.min_context_slot);
-
-        if let Some(data_slice_inner) = parameters_inner.data_slice {
-            offset = data_slice_inner.offset;
-            offset_length = data_slice_inner.length;
-        }
-    }
-
     let row = ga_query.query().await?;
 
     let mut query_result = Map::new();
@@ -128,7 +116,7 @@ pub async fn get_program_accounts(
 
         min_context_slot = has_parameters.min_context_slot;
 
-        data_slice = has_parameters.data_slice;
+        data_slice = has_parameters.data_slice
     }
 
     let gpa = GetProgramAccounts::new()

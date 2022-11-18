@@ -1,6 +1,4 @@
-use crate::{
-    Commitment, Context, DataSlice, Encoding, Filter, GetAccountInfoRow, ProxyError, ProxyResult,
-};
+use crate::{Commitment, Context, GetAccountInfoRow, ProxyResult};
 
 /// Helper struct to create the query for `getAccountInfo` using the builder pattern
 pub struct GetAccountInfoQuery<'q> {

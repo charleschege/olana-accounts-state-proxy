@@ -1,5 +1,5 @@
 use crate::{
-    Commitment, Context, GetProgramAccounts, DataSlice, Encoding, Filter, GetAccountInfoRow, ProxyError, ProxyResult,
+      GetProgramAccounts,  Encoding, Filter,  ProxyError, ProxyResult,
 };
 
 impl<'q> GetProgramAccounts<'q> {
@@ -7,7 +7,6 @@ impl<'q> GetProgramAccounts<'q> {
     /// `gPA` accounts with commitment level `Processed` and `mint`
     // substring(data, {1}, {2}), memcmp.offset+1, len(memcmp.bytes)
     pub async fn processed_with_memcmp(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
-        let commitment: Commitment = self.commitment.into();
         let owner = self.base58_public_key;
 
         crate::PgConnection::client_exists().await?;
@@ -55,8 +54,8 @@ impl<'q> GetProgramAccounts<'q> {
             SELECT DISTINCT on(account_write.pubkey) * FROM account_write
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $1::TEXT 
-            AND substring(data,$2,$3) = $4::TEXT
-            AND substring(data,$5,$6) = $7::TEXT
+            AND substring(data,$2,$3) = $4
+            AND substring(data,$5,$6) = $7
             AND length(data) = $8                                                      
             ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
             ", &[
@@ -98,9 +97,9 @@ impl<'q> GetProgramAccounts<'q> {
             SELECT DISTINCT on(account_write.pubkey) * FROM account_write
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $1::TEXT 
-            AND substring(data,$2,$3) = $4::TEXT
-            AND substring(data,$5,$6) = $7::TEXT
-            AND substring(data,$8,$9) = $10::TEXT
+            AND substring(data,$2,$3) = $4
+            AND substring(data,$5,$6) = $7
+            AND substring(data,$8,$9) = $10
             AND length(data) = $11                                                      
             ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
             ", &[
@@ -126,7 +125,7 @@ impl<'q> GetProgramAccounts<'q> {
             SELECT DISTINCT on(account_write.pubkey) * FROM account_write
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $1::TEXT 
-            AND substring(data,$2,$3) = $4::TEXT
+            AND substring(data,$2,$3) = $4
             AND length(data) = $5                                                      
             ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
             ", &[&owner, &offset, &offset_bytes_len, &memcmp_data_hex, &data_size]).await?;
@@ -138,7 +137,6 @@ impl<'q> GetProgramAccounts<'q> {
     /// `gPA` accounts with `Processed` level, `Filters` and `dataSlice`
     // substring(data, {1}, {2}), memcmp.offset+1, len(memcmp.bytes)
     pub async fn processed_memcmp_and_data_slice(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
-        let commitment: Commitment = self.commitment.into();
         let owner = self.base58_public_key;
         let data_slice = match self.data_slice {
             Some(data_slice) => data_slice,
@@ -195,8 +193,8 @@ impl<'q> GetProgramAccounts<'q> {
             SELECT DISTINCT on(account_write.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, SUBSTRING(data, $1, $2) FROM account_write
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $3::TEXT 
-            AND substring(data,$4,$5) = $6::TEXT
-            AND substring(data,$7,$8) = $9::TEXT
+            AND substring(data,$4,$5) = $6
+            AND substring(data,$7,$8) = $9
             AND length(data) = $10                                                      
             ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
             ", &[
@@ -240,9 +238,9 @@ impl<'q> GetProgramAccounts<'q> {
             SELECT DISTINCT on(account_write.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, SUBSTRING(data, $1, $2) FROM account_write
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $3::TEXT 
-            AND substring(data,$4,$5) = $6::TEXT
-            AND substring(data,$7,$8) = $9::TEXT
-            AND substring(data,$10,$11) = $12::TEXT
+            AND substring(data,$4,$5) = $6
+            AND substring(data,$7,$8) = $9
+            AND substring(data,$10,$11) = $12
             AND length(data) = $13                                                      
             ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
             ", &[
@@ -270,7 +268,7 @@ impl<'q> GetProgramAccounts<'q> {
             SELECT DISTINCT on(account_write.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, SUBSTRING(data, $1, $2) FROM account_write
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $3::TEXT 
-            AND substring(data,$4,$5) = $6::TEXT
+            AND substring(data,$4,$5) = $6
             AND length(data) = $7                                                      
             ORDER BY account_write.pubkey, account_write.slot DESC, account_write.write_version DESC;
             ", &[

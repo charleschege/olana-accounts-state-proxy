@@ -1,6 +1,4 @@
-use crate::{
-    Commitment, Context, DataSlice, Encoding, Filter, GetAccountInfoRow, ProxyError, ProxyResult,
-};
+use crate::{Commitment, DataSlice, Filter, ProxyResult};
 
 mod with_confirmed;
 pub use with_confirmed::*;
@@ -72,11 +70,33 @@ impl<'q> GetProgramAccounts<'q> {
     pub async fn load_data(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         dbg!(&self);
 
+        let commitment: Commitment = self.commitment.into();
+
         // Check if only basic queries are supported
         if self.filters.is_none() && self.data_slice.is_none() && self.min_context_slot.is_none() {
             self.basic_with_commitment().await
+        }
+        // Queries with no `dataSlice` field
+        else if self.filters.is_some() && self.data_slice.is_none() {
+            if commitment == Commitment::Processed {
+                self.processed_with_memcmp().await
+            } else if commitment == Commitment::Confirmed {
+                self.confirmed_with_memcmp().await
+            } else {
+                self.finalized_with_memcmp().await
+            }
+        }
+        // Queries with `dataSlice` field
+        else if self.filters.is_some() && self.data_slice.is_some() {
+            if commitment == Commitment::Processed {
+                self.processed_memcmp_and_data_slice().await
+            } else if commitment == Commitment::Confirmed {
+                self.confirmed_memcmp_and_data_slice().await
+            } else {
+                self.finalized_memcmp_and_data_slice().await
+            }
         } else {
-            panic!()
+            todo!()
         }
     }
 
