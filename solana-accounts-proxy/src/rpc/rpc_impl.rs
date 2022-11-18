@@ -136,7 +136,7 @@ pub async fn get_program_accounts(
         .add_commitment(commitment.queryable())
         .add_min_context_slot(min_context_slot);
 
-    let rows = gpa.query().await?;
+    let rows = gpa.basic_with_commitment().await?;
 
     let outcome = GetProgramAccountsRow::from_row(rows, encoding)?;
 
