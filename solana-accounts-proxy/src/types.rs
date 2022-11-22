@@ -198,7 +198,7 @@ impl Commitment {
         match self {
             Self::Confirmed => "Confirmed",
             Self::Processed => "Processed",
-            Self::Finalized => "Rooted",
+            Self::Finalized => "Finalized",
         }
     }
     /// Returns the commitment level to use when executing the query
