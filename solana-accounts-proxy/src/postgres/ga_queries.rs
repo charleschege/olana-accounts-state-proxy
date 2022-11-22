@@ -53,13 +53,13 @@ impl<'q> GetAccountInfoQuery<'q> {
                 .query_one(
                     "
                     SELECT 
-                        account_write.slot,
-                        account_write.data,
-                        account_write.executable,
-                        account_write.owner,
-                        account_write.lamports,
-                        account_write.rent_epoch
-                    FROM account_write WHERE pubkey = '$1'
+                        accounts.slot,
+                        accounts.data,
+                        accounts.executable,
+                        accounts.owner,
+                        accounts.lamports,
+                        accounts.rent_epoch
+                    FROM accounts WHERE pubkey = '$1'
                     AND slot >= $2;",
                     &[&pubkey, &slot],
                 )
@@ -73,13 +73,13 @@ impl<'q> GetAccountInfoQuery<'q> {
                 .query_one(
                     "
                     SELECT 
-                        account_write.slot,
-                        account_write.data,
-                        account_write.executable,
-                        account_write.owner,
-                        account_write.lamports,
-                        account_write.rent_epoch
-                    FROM account_write WHERE pubkey = $1::TEXT;",
+                        accounts.slot,
+                        accounts.data,
+                        accounts.executable,
+                        accounts.owner,
+                        accounts.lamports,
+                        accounts.rent_epoch
+                    FROM accounts WHERE pubkey = $1::TEXT;",
                     &[&pubkey],
                 )
                 .await?;
