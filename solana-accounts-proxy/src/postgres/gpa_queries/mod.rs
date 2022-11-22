@@ -74,6 +74,7 @@ impl<'q> GetProgramAccounts<'q> {
 
         // Check if only basic queries are supported
         if self.filters.is_none() && self.data_slice.is_none() && self.min_context_slot.is_none() {
+            //TODO `minContextSlot`
             self.basic_with_commitment().await
         }
         // Queries with no `dataSlice` field
