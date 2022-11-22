@@ -168,6 +168,24 @@ impl Encoding {
         }
     }
 
+    /// Decode data from a method parameter,
+    /// `NOTE:` Only `base64` and `base58` formats, all other formats result in an RPC error.
+    pub fn decode_str(&self, data: &str) -> ProxyResult<Vec<u8>> {
+        match self {
+            Self::Base58 => match bs58::decode(data).into_vec() {
+                Ok(decoded_data) => Ok(decoded_data),
+                Err(error) => Err(ProxyError::Client(error.to_string())),
+            },
+            _ => {
+                let mut to_rpc_error = "Unsupported data encoding format `".to_owned();
+                to_rpc_error.push_str(self.to_str());
+                to_rpc_error.push_str("` for the method.");
+
+                Err(ProxyError::Client(to_rpc_error.to_string()))
+            }
+        }
+    }
+
     /// Used to return the encoding type in the JSON response
     pub fn to_str(&self) -> &str {
         match self {
