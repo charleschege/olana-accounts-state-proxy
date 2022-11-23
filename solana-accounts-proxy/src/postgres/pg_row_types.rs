@@ -56,8 +56,8 @@ impl GetProgramAccountsRow {
             .par_iter()
             .map(|row| {
                 let pubkey: String = row.get(0);
-                let owner: String = row.get(1);
-                let lamports: i64 = row.get(2);
+                let lamports: i64 = row.get(1);
+                let owner: String = row.get(2);
                 let executable: bool = row.get(3);
                 let rent_epoch: i64 = row.get(4);
                 let data: Vec<u8> = row.get(5);

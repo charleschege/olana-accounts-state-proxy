@@ -47,13 +47,13 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len2 = memcmp_bytes2.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) * FROM accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, accounts
             WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
             AND length(data) = $8                                                      
-            ORDER BY accounts.pubkey, accounts.slot DESC, accounts.write_version DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[
                 &owner, 
                 &offset1, &offset_bytes_len1, &memcmp_bytes1, 
@@ -84,20 +84,22 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len3 = memcmp_bytes3.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(pubkey) * FROM accounts
+            SELECT DISTINCT on(pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
             AND substring(data,$8,$9) = $10
             AND length(data) = $11                                                      
-            ORDER BY pubkey, slot DESC, write_version DESC;
+            ORDER BY pubkey, slot DESC;
             ", &[
                 &owner, 
                 &offset1, &offset_bytes_len1, &memcmp_bytes1, 
                 &offset2, &offset_bytes_len2, &memcmp_bytes2,
                 &offset3, &offset_bytes_len3, &memcmp_bytes3, 
                 &data_size]).await?;
+
+
 
             Ok(rows)
         }else {
@@ -110,12 +112,12 @@ impl<'q> GetProgramAccounts<'q> {
 
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) * FROM accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, accounts
             WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND length(data) = $5                                                      
-            ORDER BY accounts.pubkey, accounts.slot DESC, accounts.write_version DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner, &offset, &offset_bytes_len, &memcmp_bytes, &data_size]).await?;
 
             Ok(rows)
@@ -180,7 +182,7 @@ impl<'q> GetProgramAccounts<'q> {
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
             AND length(data) = $10                                                      
-            ORDER BY accounts.pubkey, accounts.slot DESC, accounts.write_version DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[
                 &data_slice_offset,
                 &data_slice_length,
@@ -220,7 +222,7 @@ impl<'q> GetProgramAccounts<'q> {
             AND substring(data,$7,$8) = $9
             AND substring(data,$10,$11) = $12
             AND length(data) = $13                                                      
-            ORDER BY accounts.pubkey, accounts.slot DESC, accounts.write_version DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[
                 &data_slice_offset,
                 &data_slice_length,
@@ -245,7 +247,7 @@ impl<'q> GetProgramAccounts<'q> {
             AND owner = $3::TEXT
             AND substring(data,$4,$5) = $6
             AND length(data) = $7                                                      
-            ORDER BY accounts.pubkey, accounts.slot DESC, accounts.write_version DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[
                 &data_slice_offset, &data_slice_length, &owner, &offset, &offset_bytes_len, &memcmp_bytes, &data_size]).await?;
 

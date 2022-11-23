@@ -131,8 +131,6 @@ impl PostgresConfig {
         url.push('/');
         url.push_str(&self.dbname);
 
-        dbg!(&url);
-
         url
     }
 }

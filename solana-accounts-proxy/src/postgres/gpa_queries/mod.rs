@@ -68,8 +68,6 @@ impl<'q> GetProgramAccounts<'q> {
 
     /// Executor for the queries
     pub async fn load_data(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
-        dbg!(&self);
-
         let commitment: Commitment = self.commitment.into();
 
         // Check if only basic queries are supported

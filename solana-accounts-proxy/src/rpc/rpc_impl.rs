@@ -78,7 +78,8 @@ pub async fn get_program_accounts(
     base58_public_key: &str,
     parameters: Option<Parameters>,
 ) -> RpcResult<Option<JsonValue>> {
-    dbg!(&parameters);
+    tracing::debug!("PARSED PUBLIC KEY: {:?}", base58_public_key);
+    tracing::debug!("PARSED PARAMETERS: {:?}", &parameters);
 
     let mut commitment = Commitment::Finalized;
     let mut min_context_slot: Option<u64> = Option::None;

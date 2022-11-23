@@ -4,7 +4,7 @@ port = 4000
 
 [postgres]
 user   = "postgres"
-dbname = "multiple_owners"
+dbname = "geyser"
 host   = "pit30.rpcpool.com"
 port   = 9114                # Optional field
 #password = ""                  # Optional field
