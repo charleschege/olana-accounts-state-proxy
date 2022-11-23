@@ -47,7 +47,7 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len2 = memcmp_bytes2.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, accounts
+            SELECT DISTINCT on(accounts.pubkey)pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
@@ -59,6 +59,8 @@ impl<'q> GetProgramAccounts<'q> {
                 &offset1, &offset_bytes_len1, &memcmp_bytes1, 
                 &offset2, &offset_bytes_len2, &memcmp_bytes2, 
                 &data_size]).await?;
+                
+                crate::row_data_size_info(rows.len());
 
             Ok(rows)
         } else if memcmps.len() == 3 {
@@ -85,7 +87,7 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len3 = memcmp_bytes3.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
@@ -99,6 +101,8 @@ impl<'q> GetProgramAccounts<'q> {
                 &offset2, &offset_bytes_len2, &memcmp_bytes2,
                 &offset3, &offset_bytes_len3, &memcmp_bytes3, 
                 &data_size]).await?;
+                
+                crate::row_data_size_info(rows.len());
 
             Ok(rows)
         }else {
@@ -110,13 +114,15 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len = memcmp_bytes.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND length(data) = $5                                                      
             ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner, &offset, &offset_bytes_len, &memcmp_bytes, &data_size]).await?;
+            
+            crate::row_data_size_info(rows.len());
 
             Ok(rows)
         }
@@ -174,7 +180,7 @@ impl<'q> GetProgramAccounts<'q> {
             
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, SUBSTRING(data, $1, $2) FROM accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
@@ -188,6 +194,8 @@ impl<'q> GetProgramAccounts<'q> {
                 &offset1, &offset_bytes_len1, &memcmp_bytes1, 
                 &offset2, &offset_bytes_len2, &memcmp_bytes2, 
                 &data_size]).await?;
+                
+                crate::row_data_size_info(rows.len());
 
             Ok(rows)
         } else if memcmps.len() == 3 {
@@ -213,7 +221,7 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len3 = memcmp_bytes3.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, SUBSTRING(data, $1, $2) FROM accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
@@ -229,6 +237,8 @@ impl<'q> GetProgramAccounts<'q> {
                 &offset2, &offset_bytes_len2, &memcmp_bytes2,
                 &offset3, &offset_bytes_len3, &memcmp_bytes3, 
                 &data_size]).await?;
+                
+                crate::row_data_size_info(rows.len());
 
             Ok(rows)
         }else {
@@ -240,7 +250,7 @@ impl<'q> GetProgramAccounts<'q> {
             let offset_bytes_len = memcmp_bytes.len() as i32;
 
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) pubkey, slot, owner, lamports, executable, rent_epoch, SUBSTRING(data, $1, $2) FROM accounts
+            SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
             WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
@@ -248,6 +258,8 @@ impl<'q> GetProgramAccounts<'q> {
             ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[
                 &data_slice_offset, &data_slice_length, &owner, &offset, &offset_bytes_len, &memcmp_bytes, &data_size]).await?;
+                
+                crate::row_data_size_info(rows.len());
 
             Ok(rows)
         }
