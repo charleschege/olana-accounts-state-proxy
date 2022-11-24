@@ -110,35 +110,43 @@ impl<'q> GetProgramAccounts<'q> {
 
         if commitment == Commitment::Processed {
             let rows = pg_client.query("
-            SELECT DISTINCT ON(accounts.pubkey) accounts.pubkey FROM accounts 
-            WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
+            SELECT DISTINCT ON(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts 
+            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $1::TEXT
             ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner]).await?;
+
+            crate::row_data_size_info(rows.len());
 
             Ok(rows)
         } else if commitment == Commitment::Confirmed {
             let rows = pg_client.query("
-            SELECT DISTINCT on(accounts.pubkey) accounts.pubkey FROM accounts 
-            WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed') )
+            SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts 
+            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed') )
             AND owner = $1::TEXT
             ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner]).await?;
 
+            crate::row_data_size_info(rows.len());
+
             Ok(rows)
         } else {
-            let rows = pg_client.query(
-                "
+            let rows = pg_client
+                .query(
+                    "
                 SELECT DISTINCT on(accounts.pubkey)
-                    accounts.pubkey, accounts.owner, accounts.lamports, accounts.executable, accounts.rent_epoch, accounts.data
+                    pubkey, lamports, owner, executable, rent_epoch, data
                 FROM accounts
                 WHERE
-                    rooted = true
+                    finalized = true
                 AND owner = $1::TEXT
                 ORDER BY accounts.pubkey, accounts.slot DESC;
                 ",
-                &[&owner]
-            ).await?;
+                    &[&owner],
+                )
+                .await?;
+
+            crate::row_data_size_info(rows.len());
 
             Ok(rows)
         }
