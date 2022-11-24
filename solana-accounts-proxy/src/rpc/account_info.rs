@@ -28,7 +28,7 @@ impl AccountInfo {
 
         let outcome = Instant::now().duration_since(timer);
 
-        tracing::debug!(
+        tracing::trace!(
             "TIME TO ENCODE TO `AccountInfo` JSON: {}s {}ms {}ns",
             outcome.as_secs(),
             outcome.subsec_millis(),

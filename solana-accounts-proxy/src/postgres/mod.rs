@@ -14,6 +14,4 @@ pub use gpa_queries::*;
 pub fn row_data_size_info(rows_len: usize) {
     let row_len = rows_len as f32;
     tracing::debug!("NUM OF ACCOUNTS - {:?}", &row_len);
-    let row_size = row_len / (1024f32 * 1024f32);
-    tracing::debug!("{:?}MiB", &row_size);
 }

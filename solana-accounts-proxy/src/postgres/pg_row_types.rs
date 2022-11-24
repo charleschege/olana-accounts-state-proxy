@@ -77,6 +77,8 @@ impl GetProgramAccountsRow {
             })
             .collect::<RpcResult<Vec<SerdeJsonValue>>>();
 
+        //TODO: Force time duration to be compiled only in debug mode
+
         let outcome = Instant::now().duration_since(timer);
 
         tracing::debug!(
@@ -84,15 +86,20 @@ impl GetProgramAccountsRow {
             outcome.as_secs()
         );
 
+        #[cfg(debug_assertions)]
         let mut mb = 0usize;
+
         let account_info_list = account_info_list?;
 
+        #[cfg(debug_assertions)]
         for chunk in &account_info_list {
             mb += chunk.to_string().as_bytes().len();
         }
 
+        #[cfg(debug_assertions)]
         let to_mb = mb as f32 / 1024.0 / 1024.0;
 
+        #[cfg(debug_assertions)]
         tracing::debug!("TOTAL LENGTH OF DATA IN MB - {}", to_mb);
 
         Ok(account_info_list)

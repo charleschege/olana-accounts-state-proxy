@@ -104,21 +104,21 @@ impl Encoding {
                     return Err(JsonrpseeError::ResourceNameAlreadyTaken("Encoded binary (base 58) data should be less than 128 bytes, please use Base64 encoding."));
                 }
 
-                tracing::debug!("ENCODING DATA CHUNK AS Base58");
+                tracing::trace!("ENCODING DATA CHUNK AS Base58");
                 let data = bs58::encode(data).into_string();
-                tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base58");
+                tracing::trace!("FINISHED ENCODING DATA CHUNK AS Base58");
 
                 Ok(data)
             }
             Self::Base64 => {
-                tracing::debug!("ENCODING DATA CHUNK AS Base64");
+                tracing::trace!("ENCODING DATA CHUNK AS Base64");
                 let data = base64::encode(data);
-                tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base64");
+                tracing::trace!("FINISHED ENCODING DATA CHUNK AS Base64");
 
                 Ok(data)
             }
             Self::Base64Zstd => {
-                tracing::debug!("ENCODING DATA CHUNK AS Base64+zstd");
+                tracing::trace!("ENCODING DATA CHUNK AS Base64+zstd");
 
                 let mut buffer = data.to_vec();
                 let encoder = match zstd::Encoder::new(&mut buffer, 3) {
@@ -133,17 +133,17 @@ impl Encoding {
 
                 let data = base64::encode(&buffer);
 
-                tracing::debug!("FINISHED ENCODING DATA CHUNK AS Base64+zstd");
+                tracing::trace!("FINISHED ENCODING DATA CHUNK AS Base64+zstd");
 
                 Ok(data)
             }
             Self::JsonParsed => {
-                tracing::debug!("FINISHED ENCODING DATA CHUNK AS JsonParsed");
+                tracing::trace!("FINISHED ENCODING DATA CHUNK AS JsonParsed");
                 let to_json: json::JsonValue = data.into();
 
                 let data = to_json.to_string();
 
-                tracing::debug!("FINISHED ENCODING DATA CHUNK AS JsonParsed");
+                tracing::trace!("FINISHED ENCODING DATA CHUNK AS JsonParsed");
 
                 Ok(data)
             }
