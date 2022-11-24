@@ -110,32 +110,32 @@ impl<'q> GetProgramAccounts<'q> {
 
         if commitment == Commitment::Processed {
             let rows = pg_client.query("
-            SELECT DISTINCT ON(account_write.pubkey) account_write.pubkey FROM account_write 
+            SELECT DISTINCT ON(accounts.pubkey) accounts.pubkey FROM accounts 
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
             AND owner = $1::TEXT
-            ORDER BY account_write.pubkey, account_write.slot DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner]).await?;
 
             Ok(rows)
         } else if commitment == Commitment::Confirmed {
             let rows = pg_client.query("
-            SELECT DISTINCT on(account_write.pubkey) account_write.pubkey FROM account_write 
+            SELECT DISTINCT on(accounts.pubkey) accounts.pubkey FROM accounts 
             WHERE (rooted = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed') )
             AND owner = $1::TEXT
-            ORDER BY account_write.pubkey, account_write.slot DESC;
+            ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner]).await?;
 
             Ok(rows)
         } else {
             let rows = pg_client.query(
                 "
-                SELECT DISTINCT on(account_write.pubkey)
-                    account_write.pubkey, account_write.owner, account_write.lamports, account_write.executable, account_write.rent_epoch, account_write.data
-                FROM account_write
+                SELECT DISTINCT on(accounts.pubkey)
+                    accounts.pubkey, accounts.owner, accounts.lamports, accounts.executable, accounts.rent_epoch, accounts.data
+                FROM accounts
                 WHERE
                     rooted = true
                 AND owner = $1::TEXT
-                ORDER BY account_write.pubkey, account_write.slot DESC;
+                ORDER BY accounts.pubkey, accounts.slot DESC;
                 ",
                 &[&owner]
             ).await?;
