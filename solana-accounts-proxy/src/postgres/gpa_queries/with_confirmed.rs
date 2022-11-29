@@ -48,7 +48,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
@@ -87,7 +87,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
@@ -117,7 +117,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND length(data) = $5                                                      
@@ -183,7 +183,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
@@ -224,7 +224,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
@@ -251,7 +251,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE finalized = TRUE OR slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
             AND owner = $3::TEXT
             AND substring(data,$4,$5) = $6
             AND length(data) = $7                                                      

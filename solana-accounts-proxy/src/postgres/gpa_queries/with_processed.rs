@@ -23,13 +23,15 @@ impl<'q> GetProgramAccounts<'q> {
         };
 
         let data_size = match &self.filters {
-            Some(filters) => Filter::data_size(&filters)? as i32,
+            Some(filters) => Filter::data_size(&filters)?,
             None => {
                 return Err(ProxyError::Client(
                     "Expected a `Filter` with a `dataSize` to build this query".to_owned(),
                 ))
             }
         };
+        
+        let data_size = data_size as i32;
 
         if memcmps.len() == 2 {
             // Get values for the first MemCmp
@@ -48,7 +50,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey)pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
@@ -88,7 +90,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
@@ -115,7 +117,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND length(data) = $5                                                      
@@ -131,7 +133,7 @@ impl<'q> GetProgramAccounts<'q> {
     /// `gPA` accounts with `Processed` level, `Filters` and `dataSlice`
     // substring(data, {1}, {2}), memcmp.offset+1, len(memcmp.bytes)
     pub async fn processed_memcmp_and_data_slice(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
-        let owner = self.base58_public_key;
+        let owner = self.base58_public_key.to_owned();
         let data_slice = match self.data_slice {
             Some(data_slice) => data_slice,
             None => return Err(ProxyError::Client("The `dataSlice` field is required to perform this query".to_owned()))
@@ -155,13 +157,15 @@ impl<'q> GetProgramAccounts<'q> {
         };
 
         let data_size = match &self.filters {
-            Some(filters) => Filter::data_size(&filters)? as i32,
+            Some(filters) => Filter::data_size(&filters)?,
             None => {
                 return Err(ProxyError::Client(
                     "Expected a `Filter` with a `dataSize` to build this query".to_owned(),
                 ))
             }
         };
+        
+        let data_size = data_size as i64;
 
          if memcmps.len() == 2 {
             // Get values for the first MemCmp
@@ -181,7 +185,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
@@ -222,7 +226,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
@@ -251,7 +255,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slots WHERE status = 'confirmed' OR status='processed') )
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND length(data) = $7                                                      
@@ -264,5 +268,6 @@ impl<'q> GetProgramAccounts<'q> {
             Ok(rows)
         }
     }
+
 }
 
