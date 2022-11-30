@@ -136,7 +136,7 @@ impl CurrentSlot {
         let row = pg_client
             .query_one(
                 "
-            SELECT MAX(slot) FROM slot WHERE status::VARCHAR = $1::TEXT;
+            SELECT MAX(slot) FROM slots WHERE status::VARCHAR = $1::TEXT;
             ",
                 &[&commitment],
             )

@@ -111,7 +111,7 @@ impl<'q> GetProgramAccounts<'q> {
         if commitment == Commitment::Processed {
             let rows = pg_client.query("
             SELECT DISTINCT ON(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts 
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed' OR slot.status='Processed'))
+            WHERE (slot = (SELECT MAX(slot) FROM slot WHERE slots.status = 'confirmed' OR slot.status='processed'))
             AND owner = $1::TEXT
             ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner]).await?;
@@ -122,7 +122,7 @@ impl<'q> GetProgramAccounts<'q> {
         } else if commitment == Commitment::Confirmed {
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts 
-            WHERE (finalized = TRUE OR slot = (SELECT MAX(slot) FROM slot WHERE slot.status = 'Confirmed') )
+            WHERE (slot = (SELECT MAX(slot) FROM slot WHERE slots.status = 'confirmed') )
             AND owner = $1::TEXT
             ORDER BY accounts.pubkey, accounts.slot DESC;
             ", &[&owner]).await?;
@@ -138,7 +138,7 @@ impl<'q> GetProgramAccounts<'q> {
                     pubkey, lamports, owner, executable, rent_epoch, data
                 FROM accounts
                 WHERE
-                    finalized = true
+                    slot = (SELECT MAX(slot) FROM slots WHERE status = 'finalized')
                 AND owner = $1::TEXT
                 ORDER BY accounts.pubkey, accounts.slot DESC;
                 ",
