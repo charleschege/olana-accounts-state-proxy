@@ -48,7 +48,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE slot.status = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot.status = (SELECT MAX(slot) FROM slots WHERE slots.status = 'confirmed')
             AND owner = $1::TEXT 
             AND substring(data,$2,$3) = $4
             AND substring(data,$5,$6) = $7
@@ -107,26 +107,45 @@ impl<'q> GetProgramAccounts<'q> {
 
             Ok(rows)
         }else {
-            let memcmp1 = memcmps[0].clone();
-
-            let memcmp_bytes = Encoding::Base58.decode(memcmp1.bytes.as_bytes())?;
-            let mut offset = memcmp1.offset as i32;
-            offset += 1; // PostgreSQL starts offset from `1` but Solana SPL Token account offset starts from `0`
-            let offset_bytes_len = memcmp_bytes.len() as i32;
-
+            
+            
+            if memcmps.get(0).is_some() {
+                    let memcmp1 = memcmps[0].clone();
+                    
+                    let memcmp_bytes = Encoding::Base58.decode(memcmp1.bytes.as_bytes())?;
+                let mut offset = memcmp1.offset as i32;
+                offset += 1; // PostgreSQL starts offset from `1` but Solana SPL Token account offset starts from `0`
+                let offset_bytes_len = memcmp_bytes.len() as i32;
+    
+    
+                let rows = pg_client.query("
+                SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
+                WHERE slot = (SELECT MAX(slot) FROM slots WHERE slots.status = 'confirmed')
+                AND owner = $1::TEXT 
+                AND substring(data,$2,$3) = $4
+                AND length(data) = $5                                                      
+                ORDER BY accounts.pubkey, accounts.slot DESC;
+                ", &[&owner, &offset, &offset_bytes_len, &memcmp_bytes, &data_size]).await?;
+                
+                crate::row_data_size_info(rows.len());
+    
+                Ok(rows)
+            }else {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data FROM accounts
-            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slots.status = 'confirmed')
             AND owner = $1::TEXT 
-            AND substring(data,$2,$3) = $4
-            AND length(data) = $5                                                      
+            AND length(data) = $2                                                      
             ORDER BY accounts.pubkey, accounts.slot DESC;
-            ", &[&owner, &offset, &offset_bytes_len, &memcmp_bytes, &data_size]).await?;
+            ", &[&owner, &data_size]).await?;
             
             crate::row_data_size_info(rows.len());
 
             Ok(rows)
+            }
+
+            
         }
     }
 
@@ -183,7 +202,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slots.status = 'Confirmed')
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
@@ -224,7 +243,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slots.status = 'confirmed')
             AND owner = $3::TEXT 
             AND substring(data,$4,$5) = $6
             AND substring(data,$7,$8) = $9
@@ -251,7 +270,7 @@ impl<'q> GetProgramAccounts<'q> {
 
             let rows = pg_client.query("
             SELECT DISTINCT on(accounts.pubkey) pubkey, lamports, owner, executable, rent_epoch, data, SUBSTRING(data, $1, $2) FROM accounts
-            WHERE slot = (SELECT MAX(slot) FROM slots WHERE slot.status = 'Confirmed')
+            WHERE slot = SELECT MAX(slot) FROM slots WHERE slots.status = 'confirmed'
             AND owner = $3::TEXT
             AND substring(data,$4,$5) = $6
             AND length(data) = $7                                                      
