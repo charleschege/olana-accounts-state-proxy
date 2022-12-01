@@ -310,3 +310,13 @@ pub struct MemCmpData {
     /// Data is limited in size to 128 or fewer decoded bytes.
     pub encoding: Option<Encoding>,
 }
+
+impl MemCmpData {
+    /// Decode the bytes of the `MemCmp` data
+    pub fn decode(&self) -> ProxyResult<Vec<u8>> {
+        match self.encoding {
+            Some(encoding) => encoding.decode_str(&self.bytes),
+            None => Encoding::Base58.decode_str(&self.bytes),
+        }
+    }
+}
