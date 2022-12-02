@@ -21,9 +21,11 @@ impl<'q, 'a> GetProgramAccounts<'q> {
             let filter = filter.clone();
             match filter {
                 Filter::Memcmp(memcmp_data) => {
+                    let decoded_bytes = memcmp_data.decode()?;
+
                     sizes.push(memcmp_data.offset as i32 + 1);
-                    sizes.push(memcmp_data.bytes.len() as i32);
-                    bytes.push(memcmp_data.decode()?);
+                    sizes.push(decoded_bytes.len() as i32);
+                    bytes.push(decoded_bytes);
                 }
                 _ => (),
             }
