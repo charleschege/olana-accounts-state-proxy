@@ -49,9 +49,7 @@ impl<'q, 'a> GetProgramAccounts<'q> {
         for filter in self.filters.as_ref().unwrap() {
             let filter = filter.clone();
             match filter {
-                Filter::DataSize(_data_size) => {
-                    //params.push(&sizes[cnt1]);
-                }
+                Filter::DataSize(_data_size) => {}
                 Filter::Memcmp(_memcmp_data) => {
                     let len = params.len();
                     query += &format!(
@@ -73,8 +71,6 @@ impl<'q, 'a> GetProgramAccounts<'q> {
 
         if let Some(data_size_exists) = data_size {
             query += &format!(" AND length(data) = ${};", params.len() + 1);
-
-            dbg!(&query);
 
             params.push(&data_size_exists);
 
@@ -102,7 +98,7 @@ impl<'q, 'a> GetProgramAccounts<'q> {
                 ))
             }
         };
-        let data_slice_offset = data_slice.offset as u32 + 1;
+        let data_slice_offset = data_slice.offset as i32 + 1;
         let data_slice_length = data_slice.length as i32;
 
         crate::PgConnection::client_exists().await?;
@@ -117,48 +113,63 @@ impl<'q, 'a> GetProgramAccounts<'q> {
         AND owner = $3::TEXT "
             .to_owned();
 
-        let mut memcmps_temp = Vec::<u32>::new();
-        let mut bytes = Vec::<u8>::new();
+        let mut sizes: Vec<i32> = vec![];
+        let mut bytes = vec![];
+        for filter in self.filters.as_ref().unwrap() {
+            let filter = filter.clone();
+            match filter {
+                Filter::Memcmp(memcmp_data) => {
+                    let decoded_bytes = memcmp_data.decode()?;
 
-        let mut params: Vec<&(dyn ToSql + Sync)> =
-            vec![&data_slice_offset, &data_slice_length, &owner];
+                    sizes.push(memcmp_data.offset as i32 + 1);
+                    sizes.push(decoded_bytes.len() as i32);
+                    bytes.push(decoded_bytes);
+                }
+                _ => (),
+            }
+        }
 
-        let mut index = 1usize;
-
-        let mut data_size = Option::<i64>::None;
+        let mut data_size = Option::<i32>::None;
 
         for filter in self.filters.as_ref().unwrap() {
             let filter = filter.clone();
-
             match filter {
                 Filter::DataSize(client_data_size) => {
-                    index += 1;
-
-                    data_size.replace(client_data_size as i64);
+                    data_size.replace(client_data_size as i32);
                 }
-                Filter::Memcmp(memcmp_data) => {
-                    let offset = memcmp_data.offset as u32 + 1;
-                    let client_bytes = memcmp_data.decode()?;
-                    let bytes_len = client_bytes.len() as u32;
-                    bytes.extend_from_slice(&client_bytes);
+                _ => (),
+            }
+        }
 
+        let mut params: Vec<&(dyn ToSql + Sync)> =
+            vec![&data_slice_offset, &data_slice_length, &owner];
+        let mut cnt1 = 0;
+        let mut cnt2 = 0;
+        for filter in self.filters.as_ref().unwrap() {
+            let filter = filter.clone();
+            match filter {
+                Filter::DataSize(_data_size) => {}
+                Filter::Memcmp(_memcmp_data) => {
+                    let len = params.len();
                     query += &format!(
                         " AND substring(data,${},${}) = ${}",
-                        index + 1,
-                        index + 2,
-                        index + 3
+                        len + 1,
+                        len + 2,
+                        len + 3
                     );
 
-                    index += 3;
-
-                    memcmps_temp.push(offset);
-                    memcmps_temp.push(bytes_len);
+                    params.push(&sizes[cnt1]);
+                    cnt1 += 1;
+                    params.push(&sizes[cnt1]);
+                    cnt1 += 1;
+                    params.push(&bytes[cnt2]);
+                    cnt2 += 1;
                 }
             }
         }
 
         if let Some(data_size_exists) = data_size {
-            query += &format!(" AND length(data) = ${}", params.len() + 1);
+            query += &format!(" AND length(data) = ${};", params.len() + 1);
 
             params.push(&data_size_exists);
 
