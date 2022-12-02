@@ -62,10 +62,8 @@ impl<'q> GetProgramAccounts<'q> {
     pub async fn load_data(&self) -> ProxyResult<Vec<tokio_postgres::Row>> {
         if self.data_slice.is_some() {
             self.with_memcmp_and_data_slice().await
-        } else if self.data_slice.is_some() {
-            self.with_memcmp().await
         } else {
-            todo!()
+            self.with_memcmp().await
         }
     }
 
