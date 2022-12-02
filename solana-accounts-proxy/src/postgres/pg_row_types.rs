@@ -47,6 +47,7 @@ impl GetProgramAccountsRow {
         tracing::debug!("NUMBER OF ROWS TO PARSE: {:?}", &rows.len());
         tracing::debug!("PARSING ROWS AND CONVERTING TO JSON");
 
+        #[cfg(debug_assertions)]
         let timer = Instant::now();
 
         // FIXME remove re-allocations in each iter
@@ -77,10 +78,10 @@ impl GetProgramAccountsRow {
             })
             .collect::<RpcResult<Vec<SerdeJsonValue>>>();
 
-        //TODO: Force time duration to be compiled only in debug mode
-
+        #[cfg(debug_assertions)]
         let outcome = Instant::now().duration_since(timer);
 
+        #[cfg(debug_assertions)]
         tracing::debug!(
             "FINISHED PARSING ROWS AND CONVERTING TO JSON IN {}s",
             outcome.as_secs()
