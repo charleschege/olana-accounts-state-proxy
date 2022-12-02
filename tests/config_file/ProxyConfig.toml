@@ -1,12 +1,12 @@
 [socket]
-ip   = "0.0.0.0"
+ip = "0.0.0.0"
 port = 4000
 
 [postgres]
-user   = "postgres"
+user = "postgres"
 dbname = "geyser"
-host   = "pit30.rpcpool.com"
-port   = 9114                # Optional field
+host = "localhost"
+port = 5432        # Optional field
 #password = ""                  # Optional field
 # options =  "foobar" # Optional field
 # application_name =  "foobar"  # Optional field
