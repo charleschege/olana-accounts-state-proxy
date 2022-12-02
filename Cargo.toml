@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "solana-accounts-proxy-server",
     "solana-accounts-proxy",
     "tests/testsuite",
 ]

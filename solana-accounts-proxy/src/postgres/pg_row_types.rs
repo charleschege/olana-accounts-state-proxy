@@ -1,8 +1,10 @@
 use crate::{Account, AccountInfo, Context, Encoding};
 use jsonrpsee::core::RpcResult;
 use serde_json::Value as SerdeJsonValue;
-use tokio::time::Instant;
 use tokio_postgres::Row;
+
+#[cfg(debug_assertions)]
+use tokio::time::Instant;
 
 /// Enables easier serialization from a postgres `Row` from the `getAccountInfo` query
 #[derive(Debug)]
